@@ -1,7 +1,7 @@
 # RetainPDF: Layout-Preserving PDF Translation
 
 <p align="center">
-  <a href="README.md">中文</a> · <a href="README.en.md">English</a> · <a href="README.vi.md">Tiếng Việt</a>
+  <a href="README.md">中文</a> · <a href="README.en.md">English</a>
 </p>
 
 <p align="center">
@@ -10,15 +10,15 @@
 
 RetainPDF is currently the only open-source project built for layout-preserving translation of image-based and scanned PDFs, with translation and typesetting quality that matches or even surpasses comparable commercial products.
 
-Its in-house typography algorithm restores complex formulas and multi-column paper layouts. Scanned PDF translation, PDF structure optimization, code protection, custom translation strategies, and an open API are all included.
+**Core features**
 
-The translation system is also built in-house, with dedicated handling for cross-column and cross-page passages, broken sentences, and continued paragraphs. It restores complete semantic units before translation instead of translating isolated OCR boxes and losing context.
+- **Layout restoration**: in-house typography algorithm that restores complex formulas and multi-column paper layouts
+- **Unmatched inline-formula preservation**: formulas, surrounding text, and inline layout stay intact after translation—something no other open-source PDF translator currently achieves
+- **In-house translation system**: purpose-built for classic PDF challenges such as cross-column and cross-page passages, broken sentences, and continued paragraphs; complete semantic units are restored before translation, avoiding the context fragmentation of box-by-box translation
+- **Full-featured**: scanned PDF translation, PDF structure optimization, code protection, custom translation strategies, and an open API—all included
+- **Fully open**: code, API, and deployment are all open, ready for self-hosting and further development
 
-**Inline formulas are RetainPDF's defining advantage: formulas, surrounding text, and inline layout remain stable after translation—something other open-source PDF translators do not currently achieve.**
-
-The code, API, and deployment stack are fully open, with support for self-hosting and further development.
-
-Core capability comparison:
+## Core capability comparison
 
 | Project | Scanned PDFs | Complex inline formulas | Protect code from translation | Table control | Custom translation strategy | Layout preservation | PDF size optimization | API automation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -27,9 +27,9 @@ Core capability comparison:
 | Doc2X | ✅ | ✅ | ❌ | Moderate | Limited | Strong | Limited | ❌ Not public |
 | RetainPDF | ✅ | ✅ Strong preservation | ✅ | ✅ Optional | ✅ Rule-based | Strong | ✅ Continuously improved | ✅ |
 
-## Product
+## Product UI
 
-The web UI focuses on task progress: jobs are submitted through the open API (scripts, integrations, or the [Zotero plugin](plugin/)), and the web pages centralize execution status and artifacts.
+Jobs are submitted from the [Zotero plugin](plugin/); the web UI centralizes execution status and artifacts.
 
 ### Task list
 
@@ -59,35 +59,66 @@ Source-to-translation examples for scientific papers, scanned PDFs, formula-heav
 
 ## Quick start
 
-### Docker
+### Option 1: Pre-built images (default)
 
 ```bash
-git clone https://github.com/wxyhgk/retain-pdf.git
-cd retain-pdf/ops/deployment/docker/delivery
+git clone https://github.com/Hao-IANWY/zotero-retainpdf-plugin.git
+cd zotero-retainpdf-plugin/ops/deployment/docker/delivery
 docker compose up -d
 ```
 
-Open <http://127.0.0.1:40001> to check task status. To update:
+Open <http://127.0.0.1:40001> to check task status. Images are pulled from GHCR by default.
+
+See the [Docker deployment guide](ops/deployment/docker/delivery/README.md) for ports, secrets, reverse proxy, and more.
+
+### Option 2: Build images locally
+
+To track the latest source or customize the build, build and swap in local images:
 
 ```bash
-docker compose pull
-docker compose up -d
+cd <repo root>
+docker build --build-arg TYPST_VERSION=0.15.1 \
+  -f ops/deployment/docker/backend/Dockerfile.app -t retainpdf-app:local .
+docker build --build-arg RETAIN_PDF_VERSION=local \
+  -f ops/deployment/docker/Dockerfile.web -t retainpdf-web:local .
+cd ops/deployment/docker/delivery
+APP_IMAGE=retainpdf-app:local WEB_IMAGE=retainpdf-web:local docker compose up -d
 ```
 
-See the [Docker deployment guide](ops/deployment/docker/delivery/README.md) for more options.
+> [!TIP]
+> - The first build takes about 10–20 minutes (270 Rust crates); layered caching makes later rebuilds near-instant.
+> - If the data directory owner differs from the container's default user (uid 1000), add `--build-arg RETAINPDF_UID=<your uid> --build-arg RETAINPDF_GID=<your gid>` to the build.
 
-## Community
+### Updating
 
-QQ group: `1101779791`
+With local images, rebuilding is updating:
 
-<p align="center">
-  <img src="resources/brand/QQ_Group.JPG" alt="RetainPDF QQ group QR code" width="280" />
-</p>
+```bash
+git pull
+# Re-run the builds and docker compose up -d above
+```
+
+### Zotero plugin installation
+
+In Zotero 7+, open `Tools → Plugins → gear menu → Install Plugin From File` and select the
+[latest xpi](https://github.com/Hao-IANWY/zotero-retainpdf-plugin/releases/latest/download/retain-pdf.xpi).
+After installation, set the server address and credentials in the plugin settings (or build it yourself from the [plugin directory](plugin/)).
 
 ## Development
 
 See the [contribution guide](CONTRIBUTING.md), [project documentation](docs/README.md), and [backend guide](backend/README.md).
 
+## Acknowledgements
+
+This project is derived from [wxyhgk/retain-pdf](https://github.com/wxyhgk/retain-pdf) and has evolved independently since. Thanks to the upstream author for open-sourcing the original work.
+
 ## License
 
-This project is distributed under the MIT License. See [LICENSE](LICENSE) for the full text.
+- Original code in this repository: MIT (see [LICENSE](LICENSE))
+- `plugin/` (Zotero plugin): AGPL-3.0-or-later, based on
+  [zotero-plugin-template](https://github.com/windingwind/zotero-plugin-template)
+- The runtime dependency PyMuPDF is AGPL-3.0: self-hosting counts as using AGPL
+  software, so please comply with its terms. Pre-built images are published on GHCR
+  (`ghcr.io/hao-ianwy/retainpdf-app` / `retainpdf-web`) and correspond one-to-one
+  with the source in this repository; as required by AGPL, image users can obtain
+  the complete corresponding source code here.
