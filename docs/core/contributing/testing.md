@@ -7,7 +7,7 @@
 - 可公开或已脱敏的 PDF 样本，以及对应的期望现象、页码、bbox、截图和 job_id。
 - OCR 归一化、翻译、公式保护、渲染、下载、reader、library、resume 的回归用例。
 - 大样本性能基准，例如 100 页、500 页、1000 页 PDF 的阶段耗时、内存占用和输出体积。
-- 端到端验收清单，例如桌面端首次启动、Docker 升级、断网重试、token 错误、任务取消、重新渲染、批量删除。
+- 端到端验收清单，例如 Docker 升级、断网重试、token 错误、任务取消、重新渲染、批量删除。
 - 手工测试报告，包含环境、版本、复现步骤、期望结果、实际结果和附件。
 - 自动化测试脚本或 fixture，但必须保证不包含私有 token、真实用户文件或不可公开内容。
 
@@ -17,7 +17,7 @@
 ## 环境
 
 - RetainPDF 版本：
-- 运行方式：桌面端 / Docker / 本地开发
+- 运行方式：Docker / 本地开发
 - 系统和浏览器：
 - OCR provider：
 - 模型 provider：
@@ -73,12 +73,11 @@ uv run --project "$BACKEND_ROOT" python -m pytest "$BACKEND_ROOT/pipeline/devtoo
 python3 "$BACKEND_ROOT/pipeline/devtools/check_pipeline_architecture.py"
 ```
 
-前端与桌面端：
+前端：
 
 ```bash
 npm --prefix frontend/web test
 npm --prefix frontend/web run build
-npm --prefix frontend/desktop run verify-frontend-sync
 ```
 
 `npm --prefix frontend/web test` 使用 Node 原生 test runner，优先覆盖任务进度、状态整形等不依赖浏览器和后端服务的纯函数回归。

@@ -19,7 +19,6 @@ Python 后端按可部署单元维护依赖：
 
 - `ops/deployment/docker/requirements-app.txt`
 - `ops/deployment/docker/requirements-test.txt`
-- `frontend/desktop/requirements-desktop-*.txt`
 
 ## 更新方式
 

@@ -4,7 +4,7 @@
 
 提交 Bug Issue 时尽量包含：
 
-- RetainPDF 版本、运行方式：桌面端 / Docker / 本地开发。
+- RetainPDF 版本、运行方式：Docker / 本地开发。
 - 操作系统和浏览器。
 - OCR provider、模型 provider、任务 workflow。
 - job_id、失败阶段、错误摘要或截图。
@@ -43,7 +43,7 @@ PR 描述建议包含：
 
 - [ ] npm run test:api
 - [ ] BACKEND_ROOT="$(python3 .github/scripts/resolve_backend_source.py --print-path)" && python3 "$BACKEND_ROOT/pipeline/devtools/check_pipeline_architecture.py"
-- [ ] npm --prefix frontend/desktop run verify-frontend-sync
+- [ ] npm run verify:web
 
 ## 风险
 
@@ -103,11 +103,11 @@ PR 描述建议包含：
 
 ## 发布与运维
 
-普通贡献者通常不需要打 tag 或发布包。维护者发布时会单独执行版本提交、tag、GitHub push、桌面端同步和 Docker/Release 流程。
+普通贡献者通常不需要打 tag 或发布包。维护者发布时会单独执行版本提交、tag、GitHub push 和 Docker/Release 流程。
 
 如果你的 PR 会影响发布包，请在 PR 描述中说明：
 
-- 是否影响桌面端 bundle。
+- 是否影响 Zotero 插件。
 - 是否影响 Docker runtime config。
 - 是否需要迁移数据库或兼容旧 job。
 - 是否需要更新 README、API 文档或用户安装说明。

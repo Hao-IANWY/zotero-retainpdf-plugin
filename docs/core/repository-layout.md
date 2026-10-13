@@ -1,11 +1,12 @@
 # 仓库目录职责
 
 仓库按职责分区，模块内部继续按功能组织。目录迁移不改变包名、公共 API、
-任务协议、桌面安装包内部布局或用户数据位置。
+任务协议或用户数据位置。
 
 | 目录 | 责任 |
 | --- | --- |
-| `frontend/web`、`frontend/desktop` | 网页与桌面入口 |
+| `frontend/web` | 网页入口（两页形态：任务列表 + 详情） |
+| `plugin` | Zotero 插件（独立锁文件与发版流程） |
 | `frontend/packages` | 前端共享 UI、Reader、客户端及展示模型 |
 | `backend/api`、`backend/jobs` | HTTP 边界与任务进程调度 |
 | `backend/pipeline` | 独立可执行的文档流水线 |

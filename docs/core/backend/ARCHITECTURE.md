@@ -6,11 +6,11 @@
 
 ## 部署边界
 
-RetainPDF 面向本地桌面与自托管 Docker，不按云端微服务拆库。代码以清晰的
+RetainPDF 面向本地与自托管 Docker，不按云端微服务拆库。代码以清晰的
 包、crate、进程和协议边界解耦，持久状态仍由同一后端数据根统一管理。
 
 ```text
-frontend/web 或 frontend/desktop
+Zotero 插件 / frontend/web
   └─ rust_api
        ├─ :41000  完整 HTTP API、下载、SSE、健康与就绪检查
        ├─ :42000  仅 POST /api/v1/translate/bundle
@@ -77,7 +77,7 @@ delivery seq 不等于原始事件 seq，也不等于翻译 SSE seq。协议、�
 ### 数据根布局
 
 `RUST_API_DATA_ROOT` 是运行数据的共同根。开发启动器默认使用仓库根 `data/`，
-Docker 使用 `/data`，桌面端传入应用数据目录；`services/data/` 不是通用运行真值。
+Docker 使用 `/data`；`services/data/` 不是通用运行真值。
 
 | 路径 | 所有者与语义 |
 | --- | --- |

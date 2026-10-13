@@ -41,7 +41,7 @@ python3 .github/scripts/run_with_backend_source.py -- \
 
 - 后端组件的 Python packaging、Rust workspace、源码归档和 Docker 构建保持独立可验证。
 - 产品与后端 contract schema 必须在同一个 PR 中通过 parity 检查。
-- Docker、桌面端和本地运行都消费当前产品 commit 内的同一份 `services/`。
+- Docker 和本地运行都消费当前产品 commit 内的同一份 `services/`。
 - CI 只 checkout 当前产品 commit，然后就地校验并消费 `services/`。
 - 产品仓库之外的本地后端副本可以用于自包含验证，但不是产品构建输入或第二个发布源。
 

@@ -4,7 +4,7 @@
 
 ## 入口
 
-- [前端与桌面端](./frontend.md)
+- [前端](./frontend.md)
 - [Rust API](./backend.md)
 - [数据库与持久化](./database.md)
 - [Python 流水线](./python-pipeline.md)

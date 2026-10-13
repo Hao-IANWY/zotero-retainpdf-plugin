@@ -1,10 +1,10 @@
 # 贡献指南
 
-感谢你愿意参与 RetainPDF。这个项目包含 Rust API、数据库、Python OCR/翻译/渲染流水线、静态前端、桌面端和 Docker 交付。贡献时最重要的是：边界清楚、改动可验证、问题可复现。
+感谢你愿意参与 RetainPDF。这个项目包含 Rust API、数据库、Python OCR/翻译/渲染流水线、静态前端、Zotero 插件和 Docker 交付。贡献时最重要的是：边界清楚、改动可验证、问题可复现。
 
 ## 贡献方向
 
-- 前端与桌面端：任务状态、对照阅读、术语表 UI、下载体验和 Electron bundle 同步。
+- 前端：任务状态、失败诊断、产物下载体验（完整产品客户端是 Zotero 插件）。
 - Rust API：任务管理、图书馆接口、产物下载、事件流、reader、断点恢复和权限边界。
 - 数据库与持久化：job/artifact/event/glossary 记录、schema 兼容、旧数据恢复和存储路径。
 - Python 流水线：OCR 归一化、翻译一致性、公式保护、渲染、PDF 处理和失败诊断。
@@ -14,7 +14,7 @@
 
 ## 子文档
 
-- [前端与桌面端贡献指南](docs/core/contributing/frontend.md)
+- [前端贡献指南](docs/core/contributing/frontend.md)
 - [Rust API 贡献指南](docs/core/contributing/backend.md)
 - [数据库与持久化贡献指南](docs/core/contributing/database.md)
 - [Python 流水线贡献指南](docs/core/contributing/python-pipeline.md)

@@ -71,22 +71,21 @@ uv run --project "$BACKEND_ROOT" python -m pytest "$BACKEND_ROOT/pipeline/devtoo
 uv run --project "$BACKEND_ROOT" python -m pytest "$BACKEND_ROOT/pipeline/devtools/tests/rendering" -q
 ```
 
-### 前端与桌面端同步
+### 前端同步
 
-用途：防止 AI 只改网页源码，忘记桌面端 bundle。
+用途：防止 AI 只改源码不跑构建，HTML 引用的哈希产物失配。
 
 应提醒 AI：
 
-- 改 `frontend/web/**` 后需要跑 `npm --prefix frontend/desktop run verify-frontend-sync`。
-- 不要只改 `frontend/desktop/app/frontend/**`。
-- `frontend/web-react/` 是迁移区，不默认替代 `frontend/web/`。
+- 改 `frontend/web/**` 后需要跑 `npm run build:web` 重建 `dist/` 产物。
+- feature 模块边界见 `frontend/web/src/FEATURES.md`，不要把新流程塞回入口文件。
 - 本地静态前端默认端口是 `40001`。
 
 常用检查：
 
 ```bash
-npm --prefix frontend/web run build
-npm --prefix frontend/desktop run verify-frontend-sync
+npm run build:web
+npm run verify:web
 ```
 
 ### 测试与回归生成
@@ -112,7 +111,7 @@ npm --prefix frontend/desktop run verify-frontend-sync
 - 实现契约是否同步 `backend/api/docs/api-spec/`，共享 schema 是否保持
   `backend/contracts` 与 `contracts` 字节一致。
 - Python 边界是否同步 `docs/core/python/`。
-- 前端、Docker、桌面端端口和命令是否一致。
+- 前端、Docker 端口和命令是否一致。
 - 根目录 `CONTRIBUTING.md` 是否仍然只是短入口。
 
 ## 推荐工作流
@@ -163,4 +162,4 @@ npm --prefix frontend/desktop run verify-frontend-sync
 - AI 生成的代码必须经过人工 review。
 - AI 不应提交真实用户文件、私有 token、本地数据库或大体积运行产物。
 - AI 做重构时必须说明替代了哪些重复或耦合，不能为了“看起来更通用”新增抽象。
-- AI 修改发布、Docker、桌面端打包流程时，要额外说明回滚方式和验证方式。
+- AI 修改发布、Docker 交付流程时，要额外说明回滚方式和验证方式。

@@ -49,5 +49,5 @@ python3 "$BACKEND_ROOT/api/scripts/check_architecture.py"
 
 - 影响哪些 endpoint 或内部 service。
 - 是否改变 job、artifact、reader、library、resume、diagnostics 等契约。
-- 是否需要更新前端、桌面端或 API 文档。
+- 是否需要更新前端或 API 文档。
 - 已跑哪些 Rust 检查；没跑的说明原因。
