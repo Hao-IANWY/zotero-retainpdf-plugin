@@ -63,7 +63,7 @@ data/
 !frontend/packages/reader/src/shared/data/**
 backend/api/auth.local.json
 backend/pipeline/.env/*.env
-ops/deployment/docker/delivery/docker-compose.override.yml
+ops/deployment/docker/delivery/compose.override.yml
 ops/deployment/typst/*/bin/
 frontend/desktop/linux/
 frontend/desktop/win_jobid/
