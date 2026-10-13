@@ -67,10 +67,8 @@ cd retain-pdf/ops/deployment/docker/delivery
 docker compose up -d
 ```
 
-启动后访问 <http://127.0.0.1:40001> 查看任务状态。
-
-> 上面直接 `up` 拉的是上游预构建镜像，**不包含本仓库的最新功能**（SSE 进度流、
-> 客户端上报等）。要用完整能力请从源码构建自己的镜像：
+启动后访问 <http://127.0.0.1:40001> 查看任务状态，默认拉取本仓库发布在
+GHCR 的镜像。想跟随最新源码或自定制，可本地构建替换：
 
 ```bash
 cd <仓库根目录>
@@ -115,4 +113,6 @@ Zotero 7+ 中打开 `工具 → 插件 → 齿轮菜单 → Install Plugin From 
 - `plugin/`（Zotero 插件）：AGPL-3.0-or-later，基于
   [zotero-plugin-template](https://github.com/windingwind/zotero-plugin-template)
 - 运行时依赖 PyMuPDF 为 AGPL-3.0：自行部署即视为使用 AGPL 软件，请遵守其
-  许可条款；本项目不发布官方 Docker 镜像，请从源码自行构建
+  许可条款。预构建镜像发布在 GHCR（`ghcr.io/hao-ianwy/retainpdf-app` /
+  `retainpdf-web`），与本仓库源码一一对应；AGPL 要求下，镜像使用者同样可以
+  在本仓库获取完整对应源码
