@@ -73,6 +73,9 @@ jobs:
     needs: prepare
     permissions:
       contents: read
+      # 被调的 build-docker-images 推 GHCR 需要 packages:write；
+      # caller 的 job 权限是被调 workflow 的上限，这里必须放开
+      packages: write
     uses: ./.github/workflows/build-docker-images.yml
     with:
       version: ${{ needs.prepare.outputs.version }}
