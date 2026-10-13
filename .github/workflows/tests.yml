@@ -193,13 +193,10 @@ jobs:
       - name: Setup Typst for offline formula tests
         uses: ./.github/actions/setup-test-typst
 
-      # AI 服务测试排在装 typst 之后：test_the_board_examples_only_name_tools_that_exist
-      # 要求 agent 说明书里的命令（cat、typst）在机器上真的存在 —— agent 和流水线跑在
-      # 同一个环境里，typst 是运行时依赖。「没有 typst 也得全绿」只约束上面那步流水线
-      # 单元测试，不约束这里。以前这一步一直被前面的依赖清单检查挡住、从没跑到过。
-      - name: AI Service Tests
-        run: uv run --project "$RETAIN_PDF_SERVICES_ROOT" python -m pytest "$RETAIN_PDF_SERVICES_ROOT/ai/tests" -q
-
+      # 本仓库是快照形态，不跟踪 backend/ai（上游已把 AI 服务并入 backend
+      # workspace，依赖的 uv.lock/contracts 与本仓库的快照基线不兼容）。
+      # AI Service Tests 步骤随形态裁撤；待整仓对齐上游后再恢复，
+      # 同时恢复 .github/scripts/tests/test_translation_ci_contracts.py 里的对应断言。
       - name: Offline translation regression
         run: uv run --project "$RETAIN_PDF_SERVICES_ROOT" python "$RETAIN_PDF_SERVICES_ROOT/pipeline/devtools/run_translation_tests.py"
 
