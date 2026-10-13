@@ -20,7 +20,7 @@
 // 本文件原先在 src/pages/home/state/ 下(阶段 C 前 4 批对话框都在 home 页);
 // 阶段 C 收官批把 detail 页的 EventsTimeline 两个模态也接入 Radix Dialog 后,
 // 这个 hook 变成跨页共享(home.bundle.js + detail.bundle.js 都要打包它),
-// 挪到 src/ui/hooks/ 与 use-app-event.js/use-store.js 同级
+// 挪到 src/ui/hooks/
 // (DownloadToastHost.jsx 落在 src/ui/download-toast/,同样是"多页面各自
 // esbuild 打包但共享同一份源码"的先例)。
 

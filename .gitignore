@@ -61,6 +61,11 @@ data/
 !frontend/web/src/shared/data/**
 !frontend/packages/reader/src/shared/data/
 !frontend/packages/reader/src/shared/data/**
+# 前端 workspace 包构建产物：web 的 prebuild/pretest/pretypecheck、CI tests.yml、
+# Dockerfile.web 都会先经 build-workspace-packages.mjs 重建，无需入库。
+frontend/packages/api/dist/
+frontend/packages/domain/dist/
+frontend/packages/ui/dist/
 backend/api/auth.local.json
 backend/pipeline/.env/*.env
 ops/deployment/docker/delivery/compose.override.yml

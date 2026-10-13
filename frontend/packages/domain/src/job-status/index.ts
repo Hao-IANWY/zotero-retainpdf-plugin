@@ -66,7 +66,6 @@ export * from "./status-card-progress-view-model.js";
 export * from "./status-card/status-card-result-actions-view-model.js";
 export * from "./status-card/status-card-retry-actions-view-model.js";
 export * from "./status-card-runtime-source.js";
-export * from "./status-card/status-card-snapshot.js";
 export * from "./status-card/status-card-stage-presentation.js";
 export * from "./status-card/status-card-task-actions-view-model.js";
 export * from "./substage-view-model.js";
