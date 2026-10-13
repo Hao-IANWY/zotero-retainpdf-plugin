@@ -205,7 +205,6 @@ async fn read_tail_page(
 ) -> Result<TailPage, AppError> {
     let query = page_query(cursor.clone());
     let job_id = job_id.to_string();
-    let db = state.db.clone();
     // 同一任务同一游标的并发读取在受限阻塞通道内合并执行
     let key = format!(
         "progress-events:{job_id}:{}",
@@ -213,9 +212,10 @@ async fn read_tail_page(
     );
     run_job_query(state, key, move |jobs| {
         let view = jobs.job_events_view(&job_id, &query, false)?;
-        // 终态判断只取 status,不构造完整任务详情
-        let status = db.get_job(&job_id).ok().map(|job| job.record.status);
-        Ok(TailPage { view, status })
+        Ok(TailPage {
+            status: jobs.job_status_kind(&job_id),
+            view,
+        })
     })
     .await
 }

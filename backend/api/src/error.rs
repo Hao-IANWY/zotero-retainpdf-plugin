@@ -1,3 +1,4 @@
+use axum::extract::multipart::MultipartError;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -9,6 +10,21 @@ use thiserror::Error;
 /// 客户端的处理动作两者一致(提示条数 → 清空 → 重试),只有清空的目标不同,
 /// 靠 `error.details.scope` 与 `clear_favorites_path` 区分。
 pub const DELETE_BLOCKED_BY_FAVORITES: &str = "DELETE_BLOCKED_BY_FAVORITES";
+
+/// Converts errors raised while consuming multipart fields without exposing parser details.
+///
+/// Unlike `MultipartRejection`, these errors happen after extraction, when a handler calls
+/// `next_field`, `bytes`, or `text`. Lives here rather than in routes: the uploads domain
+/// (services/uploads) maps the same parser errors but must not depend on the routes layer.
+pub fn safe_multipart_error(error: MultipartError) -> AppError {
+    match error.status() {
+        StatusCode::PAYLOAD_TOO_LARGE => AppError::payload_too_large("request body is too large"),
+        StatusCode::INTERNAL_SERVER_ERROR => {
+            AppError::internal("unable to read multipart request body")
+        }
+        _ => AppError::bad_request("invalid multipart request body"),
+    }
+}
 
 #[derive(Clone, Debug, Error)]
 pub enum AppError {

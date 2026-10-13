@@ -39,7 +39,7 @@ python3 scripts/serve_static.py --host 127.0.0.1 --port 40001 --root .
   `index.ts` 是唯一出口），不要把新流程塞回入口文件。
 - 前端需要新增 API 字段时，先确认后端是否有稳定 view/projection，不要让前端
   从内部 payload、raw artifact 或数据库字段里猜。
-- 分层结构与门禁清单见 [`frontend/web/src/FEATURES.md`](../../frontend/web/src/FEATURES.md)。
+- 分层结构与门禁清单见 [`frontend/web/src/FEATURES.md`](../../../frontend/web/src/FEATURES.md)。
 
 ## 常用检查
 

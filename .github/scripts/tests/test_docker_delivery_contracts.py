@@ -109,7 +109,7 @@ def test_web_proxy_key_is_server_side_and_browser_key_defaults_empty() -> None:
     "declaration",
     [
         "location = /api/v1/ai/ask {",
-        "location ~ ^/api/v1/jobs/[^/]+/live-events$ {",
+        "location ~ ^/api/v1/jobs/[^/]+/(live-events|progress-events)$ {",
     ],
 )
 def test_nginx_sse_locations_disable_response_buffering(declaration: str) -> None:
@@ -118,16 +118,22 @@ def test_nginx_sse_locations_disable_response_buffering(declaration: str) -> Non
 
     assert "proxy_buffering off;" in location
     assert "proxy_cache off;" in location
-    assert "add_header X-Accel-Buffering no always;" in location
     assert "proxy_read_timeout 1h;" in location
+    # SSE 响应的 X-Accel-Buffering: no 由后端显式发送,nginx 只负责关掉
+    # 自己的缓冲层;模板里不得再用 add_header 重复(职责二分会漂移)。
+    assert "add_header X-Accel-Buffering" not in nginx
 
 
 def test_internal_nginx_preserves_forwarded_client_and_streams_large_requests() -> None:
     nginx = _text("ops/deployment/docker/nginx.conf.template")
     api_location = _nginx_location(nginx, "location /api/ {")
 
-    assert nginx.count("proxy_set_header X-Real-IP $remote_addr;") == 3
-    assert nginx.count("proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;") == 3
+    # proxy 头统一在 server 级定义一次;nginx 的继承规则是 location 只要
+    # 自己定义了任意一条 proxy_set_header 就不再继承 server 级,所以
+    # location 里出现任何 proxy_set_header 都会悄悄丢掉其余转发头。
+    assert nginx.count("proxy_set_header X-Real-IP $remote_addr;") == 1
+    assert nginx.count("proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;") == 1
+    assert "proxy_set_header" not in api_location
     assert "proxy_request_buffering off;" in api_location
     assert "proxy_read_timeout 1h;" in api_location
     assert "proxy_send_timeout 1h;" in api_location
@@ -145,9 +151,11 @@ def test_host_nginx_example_keeps_backend_private_and_sse_streaming() -> None:
     assert 'auth_basic "RetainPDF";' in nginx
     assert "client_max_body_size 256m;" in nginx
     assert "location = /api/v1/ai/ask {" in nginx
-    assert "location ~ ^/api/v1/jobs/[^/]+/live-events$ {" in nginx
+    assert "location ~ ^/api/v1/jobs/[^/]+/(live-events|progress-events)$ {" in nginx
     assert nginx.count("proxy_buffering off;") == 2
-    assert nginx.count("add_header X-Accel-Buffering no always;") == 2
+    # 同内网模板:X-Accel-Buffering 由后端发,host 反代只关自身缓冲。
+    assert "add_header X-Accel-Buffering" not in nginx
+    assert nginx.count("proxy_set_header X-Real-IP $remote_addr;") == 1
     assert "proxy_request_buffering off;" in nginx
 
 

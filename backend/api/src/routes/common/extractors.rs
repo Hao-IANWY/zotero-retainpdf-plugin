@@ -1,7 +1,7 @@
 use std::num::NonZeroU64;
 
 use axum::body::Bytes;
-use axum::extract::multipart::{Field, MultipartError, MultipartRejection};
+use axum::extract::multipart::{Field, MultipartRejection};
 use axum::extract::rejection::{JsonRejection, PathRejection, QueryRejection};
 use axum::extract::{FromRequest, FromRequestParts, Json, Multipart, Path, Query, Request};
 use axum::http::{request::Parts, StatusCode};
@@ -121,19 +121,7 @@ fn safe_multipart_rejection(_rejection: MultipartRejection) -> AppError {
     AppError::bad_request("invalid multipart request")
 }
 
-/// Converts errors raised while consuming multipart fields without exposing parser details.
-///
-/// Unlike `MultipartRejection`, these errors happen after extraction, when a handler calls
-/// `next_field`, `bytes`, or `text`.
-pub fn safe_multipart_error(error: MultipartError) -> AppError {
-    match error.status() {
-        StatusCode::PAYLOAD_TOO_LARGE => AppError::payload_too_large("request body is too large"),
-        StatusCode::INTERNAL_SERVER_ERROR => {
-            AppError::internal("unable to read multipart request body")
-        }
-        _ => AppError::bad_request("invalid multipart request body"),
-    }
-}
+pub use crate::error::safe_multipart_error;
 
 /// Reads one multipart field without ever buffering more than `max_bytes`.
 ///

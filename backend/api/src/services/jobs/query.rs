@@ -12,7 +12,7 @@ use crate::models::api::{
     ArtifactLinksView, DocumentJobListView, JobArtifactManifestView, JobDetailView,
     JobEventListView, JobListView, ListDocumentJobsQuery, ListJobEventsQuery, ListJobsQuery,
 };
-use crate::models::domain::{JobSnapshot, WorkflowKind};
+use crate::models::domain::{JobStatusKind, JobSnapshot, WorkflowKind};
 use crate::storage_paths::{
     job_uses_legacy_output_layout, job_uses_legacy_path_storage, LEGACY_JOB_UNSUPPORTED_MESSAGE,
 };
@@ -105,6 +105,11 @@ impl<'a> JobQueries<'a> {
     ) -> Result<JobArtifactManifestView, AppError> {
         let job = self.load_supported_job_snapshot(job_id, ocr_only)?;
         build_job_artifact_manifest_view(self.db, self.data_root, &job, base_url)
+    }
+
+    /// 终态判断只取 status,不构造完整任务详情(SSE tail 轮询用)。
+    pub fn job_status_kind(&self, job_id: &str) -> Option<JobStatusKind> {
+        self.db.get_job(job_id).ok().map(|job| job.record.status)
     }
 
     pub fn job_events_view(

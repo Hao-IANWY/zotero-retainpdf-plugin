@@ -2,11 +2,14 @@ use std::num::NonZeroU64;
 
 use axum::extract::multipart::Field;
 
-use super::{Admission, StagedUpload, UploadService, UploadedPdfInput};
-use crate::error::AppError;
+use super::{Admission, UploadService, UploadedPdfInput};
+use crate::error::{safe_multipart_error, AppError};
 use crate::models::api::{upload_to_response, UploadView};
 use crate::models::domain::UploadRecord;
-use crate::routes::common::safe_multipart_error;
+
+// 路由只经 `uploads::api::` 门面取类型,架构检查按此前缀放行;
+// staging 等内部模块名不得出现在路由导入里。
+pub(crate) use super::StagedUpload;
 
 pub(crate) struct UploadApiDeps<'a> {
     uploads: &'a UploadService,

@@ -10,8 +10,8 @@ use crate::routes::common::{
 };
 use crate::services::uploads::api::{
     admit_upload, commit_upload_view, stage_upload_field, store_upload as store_upload_service,
+    StagedUpload,
 };
-use crate::services::uploads::StagedUpload;
 use crate::AppState;
 
 /// 上传入口。接入许可在读取任何文件字节之前取得并贯穿全程:读取阶段
