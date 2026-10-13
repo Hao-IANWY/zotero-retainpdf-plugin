@@ -99,6 +99,11 @@ jobs:
       - name: Build @retainpdf/api
         run: npm --prefix frontend/packages/api run build
 
+      # Word 导出（排版规格 → OMML 公式 → docx)此前只有本地手跑；npm test
+      # 的目录形式在 Node 24 下会因模块解析坏掉,已改为文件形式,CI 直跑同一脚本。
+      - name: Word export tests (retainpdf2doc)
+        run: npm run test:doc
+
   # 不 needs packages：下面会自己 npm ci 并重建全部 workspace 包，不消费
   # packages job 的任何 artifact / output；串行只会让前端测试干等。
   frontend:
@@ -133,6 +138,29 @@ jobs:
       - name: Frontend Tests
         working-directory: frontend/web
         run: npm test
+
+  # Zotero 插件不在根 workspaces(独立发版、独立锁文件),类型检查单独站岗。
+  # 只跑 tsc --noEmit:zotero-plugin build 依赖完整的插件打包环境,不进门禁。
+  zotero-plugin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22.22.0"
+          cache: npm
+          cache-dependency-path: plugin/package-lock.json
+
+      - name: Install (plugin)
+        run: npm --prefix plugin ci
+
+      - name: Plugin Typecheck
+        working-directory: plugin
+        run: npx tsc --noEmit
 
   python-services:
     runs-on: ubuntu-latest
