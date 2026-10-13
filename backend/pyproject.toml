@@ -1,0 +1,25 @@
+[project]
+name = "retainpdf-backend-workspace"
+version = "4.2.6"
+description = "RetainPDF backend Python workspace"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+  "retainpdf-pipeline",
+]
+
+[project.optional-dependencies]
+test = [
+  "retainpdf-pipeline[test]",
+]
+
+[tool.uv.sources]
+retainpdf-pipeline = { workspace = true }
+
+[tool.uv.workspace]
+members = [
+  "pipeline",
+]
+
+[tool.retain_pdf.external-binaries]
+required = ["typst"]
+optional = ["gs"]

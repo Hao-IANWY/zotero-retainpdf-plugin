@@ -1,0 +1,28 @@
+/* 任务列表页 CSS 入口 → dist/css/home.css
+ * 仅 index.html 加载。
+ *
+ * 边界：禁止 import pages/detail/*（详情页自己的 entry）。
+ * 共享仅限 tokens / base / components* / dialog-shell / download-toast；
+ * TaskCenter 本身只用 Tailwind 工具类，无页内专属样式。
+ */
+@import "tailwindcss";
+@import "../core/tailwind-theme.css";
+
+@source "../../../index.html";
+@source "../../app/home/**/*.{ts,tsx}";
+@source "../../features/**/*.{ts,tsx}";
+@source "../../ui/**/*.{ts,tsx}";
+@source "../../platform/**/*.{ts,tsx}";
+@source inline("progress-bar status-result-actions status-substage-flow status-substage-step");
+
+@layer tokens, base, pages;
+
+@import "../tokens.css" layer(tokens);
+@import "../shadcn-theme.css" layer(tokens);
+@import "../base.css" layer(base);
+@import "../core/ambient-surface.css";
+
+@import "../components.css";
+@import "../components.utilities.css";
+@import "../dialog-shell.css";
+@import "../core/download-toast.css";

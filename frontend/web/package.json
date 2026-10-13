@@ -1,0 +1,56 @@
+{
+  "name": "front-tailwind-ui",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "prepare:workspace": "node ./scripts/build-workspace-packages.mjs",
+    "prebuild": "npm run prepare:workspace",
+    "build": "npm run generate:version && npm run bundle:css && npm run bundle:js",
+    "prebuild:css": "npm run prepare:workspace",
+    "build:css": "npm run bundle:css",
+    "bundle:css": "node ./scripts/build-css.mjs && node ./scripts/stamp-cache-version.mjs",
+    "prebuild:js": "npm run prepare:workspace",
+    "build:js": "npm run bundle:js",
+    "bundle:js": "node ./scripts/build-js-bundle.mjs && node ./scripts/stamp-cache-version.mjs",
+    "stamp:assets": "node ./scripts/stamp-cache-version.mjs",
+    "generate:version": "node ./scripts/generate-app-version.mjs",
+    "pretypecheck": "npm run prepare:workspace",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "smoke:config-resolution": "node --import ./tests/helpers/register-jsx.mjs --test --test-force-exit tests/shared/config-resolution.test.mjs",
+    "smoke:job-domain": "node ./scripts/job-domain-smoke.mjs",
+    "smoke:parallel-status": "python3 ./scripts/frontend-parallel-status-smoke.py",
+    "smoke:status": "node ./scripts/frontend-status-smoke.mjs",
+    "pretest": "npm run prepare:workspace",
+    "test": "node --import ./tests/helpers/register-jsx.mjs --test --test-force-exit --test-concurrency=4",
+    "watch:css": "node ./scripts/build-css.mjs --watch",
+    "watch:js": "node ./scripts/build-js-bundle.mjs --watch",
+    "verify": "npm run build && npm run typecheck --ignore-scripts && npm test --ignore-scripts"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.2",
+    "@types/node": "^26.1.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "esbuild": "^0.28.0",
+    "jsdom": "^29.1.1",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.3.2",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@retainpdf/api": "0.1.0",
+    "@retainpdf/contracts": "0.1.0",
+    "@retainpdf/domain": "0.1.0",
+    "@retainpdf/ui": "0.1.0",
+    "class-variance-authority": "^0.7.1",
+    "lucide-react": "^1.24.0",
+    "radix-ui": "^1.6.2",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "sonner": "^2.0.7"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

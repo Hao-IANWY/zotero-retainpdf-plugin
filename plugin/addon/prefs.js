@@ -1,0 +1,9 @@
+pref("serverBaseURL", "http://127.0.0.1:40001");
+pref("ocrProvider", "mineru");
+pref("paddleToken", "");
+pref("mineruToken", "");
+pref("llmApiMode", "deepseek");
+pref("llmModel", "");
+pref("llmBaseUrl", "");
+pref("llmApiKey", "");
+pref("workers", "5");

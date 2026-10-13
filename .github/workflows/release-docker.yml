@@ -1,0 +1,473 @@
+name: Release Docker Images
+run-name: Release Docker Images · ${{ github.ref_name }}
+
+# 打 tag 发布 Docker 镜像。两条路径，由 resolve job 决定：
+#
+# promote（默认期望）：push main 时 prebuild-release-candidates.yml 已经用同一个
+#   commit、同一个版本号构建好 app / web 的多架构候选（candidate-<sha>）。resolve
+#   确认「tag 版本 == commit 声明版本、commit 在 main 上、该 sha 的 Tests 成功、
+#   预构建成功、candidate artifact 未过期、registry 里的候选平台与 OCI 标签一致」
+#   后，promote job 用 imagetools create 把候选 digest 直接打成版本标签，不重新构建。
+#
+# build（回退，也是 PR / workflow_dispatch 的唯一路径）：quality-gate + 构建
+#   （build-docker-images.yml）+ publish，与之前完全相同。回退原因写在 resolve 的
+#   日志、notice 和 run summary 里。
+#
+# publish 与 promote 共用 docker-candidates composite action 做校验与提升。
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/release-docker.yml'
+      - '.github/workflows/build-docker-images.yml'
+      - '.github/actions/docker-candidates/**'
+      - '.github/actions/prepare-backend-source/**'
+      - '.github/scripts/resolve_backend_source.py'
+      - '.github/scripts/resolve_release_version.py'
+      - '.github/scripts/resolve_declared_version.py'
+      - '.github/scripts/find_release_candidate.py'
+      - '.github/scripts/release_candidate_manifest.py'
+      - '.dockerignore'
+      - 'backend-package.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'frontend/web/scripts/build-workspace-packages.mjs'
+      - 'frontend/web/**'
+      - 'frontend/packages/api/**'
+      - 'frontend/packages/domain/**'
+      - 'contracts/**'
+      - 'frontend/packages/ui/**'
+      - 'ops/deployment/docker/Dockerfile.web'
+      - 'ops/deployment/docker/entrypoint-web.sh'
+      - 'ops/deployment/docker/nginx-mjs.types.conf'
+      - 'ops/deployment/docker/nginx.conf.template'
+      - 'backend/**'
+      - 'database/**'
+      - 'resources/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'ops/deployment/docker/backend/**'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '镜像版本号，例如 v4.2.0'
+        required: true
+        default: 'dev'
+      push:
+        description: '是否推送到 Docker Hub？选 false 则只构建不推送'
+        type: boolean
+        required: false
+        default: false
+      platforms:
+        description: '目标平台（逗号分隔）'
+        required: false
+        default: 'linux/amd64,linux/arm64'
+  push:
+    tags:
+      - 'v[0-9]*.[0-9]*.[0-9]*'
+      - '[0-9]*.[0-9]*.[0-9]*'
+      # Hotfix/prerelease tags are intentionally excluded: they used to start a
+      # second copy of the full quality gate plus two Docker builds.
+      - '!v*-*'
+      - '!*-*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-docker-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # 决定提升还是回退。非 tag push（PR / dispatch）立即判定为 build，不查任何 run。
+  # 等 main 上的 Tests / 预构建跑完时最多等 120 分钟（脚本内超时短于
+  # timeout-minutes，超时回退到完整构建，而不是让 job 失败）。
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 135
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      mode: ${{ steps.decision.outputs.mode }}
+      run_id: ${{ steps.decision.outputs.run_id }}
+      version: ${{ steps.find.outputs.version }}
+      tag: ${{ steps.find.outputs.tag }}
+      stable: ${{ steps.find.outputs.stable }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Resolve declared application version
+        id: declared
+        shell: bash
+        run: |
+          if ! python3 .github/scripts/resolve_declared_version.py --github-output "$GITHUB_OUTPUT"; then
+            echo "version=" >> "$GITHUB_OUTPUT"
+            echo "::warning::This commit does not declare one aligned application version; prebuilt candidates cannot be promoted"
+          fi
+
+      - name: Find promotable prebuild
+        id: find
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DECLARED_VERSION: ${{ steps.declared.outputs.version }}
+        run: |
+          python3 .github/scripts/find_release_candidate.py \
+            --kind docker \
+            --tag "$GITHUB_REF_NAME" \
+            --declared-version "$DECLARED_VERSION"
+
+      - name: Download candidate image identities
+        id: download
+        if: steps.find.outputs.mode == 'promote'
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          pattern: docker-candidate-*-${{ steps.find.outputs.run_id }}
+          path: docker-candidates
+          merge-multiple: true
+          run-id: ${{ steps.find.outputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Set up Docker Buildx
+        if: steps.find.outputs.mode == 'promote'
+        uses: docker/setup-buildx-action@v4
+
+      - name: Resolve Docker Hub namespace
+        id: hub
+        if: steps.find.outputs.mode == 'promote'
+        shell: bash
+        run: |
+          user="${{ secrets.DOCKERHUB_USERNAME }}"
+          if [ -z "$user" ]; then
+            user="${GITHUB_REPOSITORY_OWNER}"
+          fi
+          echo "user=${user}" >> "$GITHUB_OUTPUT"
+
+      - name: Login to Docker Hub
+        id: login
+        if: steps.find.outputs.mode == 'promote'
+        continue-on-error: true
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 只校验不提升：候选标签被清理、manifest 被回收、平台或 OCI 标签不对，
+      # 都在这里发现并回退，而不是到 promote job 才失败。
+      - name: Verify candidate images are promotable
+        id: verify
+        if: steps.find.outputs.mode == 'promote' && steps.download.outcome == 'success' && steps.login.outcome == 'success'
+        continue-on-error: true
+        uses: ./.github/actions/docker-candidates
+        with:
+          candidates-dir: docker-candidates
+          image-namespace: ${{ steps.hub.outputs.user }}
+          expected-version: ${{ steps.find.outputs.version }}
+          expected-revision: ${{ github.sha }}
+          expected-platforms: linux/amd64,linux/arm64
+
+      - name: Decide release path
+        id: decision
+        shell: bash
+        env:
+          FIND_MODE: ${{ steps.find.outputs.mode }}
+          FIND_REASON: ${{ steps.find.outputs.reason }}
+          CANDIDATE_RUN_ID: ${{ steps.find.outputs.run_id }}
+          DOWNLOAD_OUTCOME: ${{ steps.download.outcome }}
+          LOGIN_OUTCOME: ${{ steps.login.outcome }}
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+        run: |
+          mode="build"
+          run_id=""
+          reason="$FIND_REASON"
+          if [ "$FIND_MODE" = "promote" ]; then
+            if [ "$DOWNLOAD_OUTCOME" = "success" ] && [ "$LOGIN_OUTCOME" = "success" ] && [ "$VERIFY_OUTCOME" = "success" ]; then
+              mode="promote"
+              run_id="$CANDIDATE_RUN_ID"
+            else
+              reason="prebuild run ${CANDIDATE_RUN_ID} passed lookup but its Docker candidates could not be downloaded or verified (download=${DOWNLOAD_OUTCOME} login=${LOGIN_OUTCOME} verify=${VERIFY_OUTCOME})"
+            fi
+          fi
+          {
+            echo "mode=$mode"
+            echo "run_id=$run_id"
+          } >> "$GITHUB_OUTPUT"
+          if [ "$mode" = "promote" ]; then
+            echo "::notice title=Docker release promotes prebuilt candidates::$reason"
+          else
+            echo "::notice title=Docker release uses a full build::$reason"
+          fi
+          printf -- '- 最终路径：**%s**（%s）\n' "$mode" "$reason" >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------- 完整构建路径（回退 / PR / dispatch） ----------------
+
+  quality-gate:
+    needs: resolve
+    if: needs.resolve.outputs.mode == 'build'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/tests.yml
+
+  # 版本号与构建策略只解析一次，传给 build-docker-images.yml 的矩阵和 merge。
+  # 不依赖 quality-gate，与测试并行跑；dispatch 输入不合法时可以立刻失败。
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      platforms: ${{ steps.policy.outputs.platforms }}
+      platform_matrix: ${{ steps.policy.outputs.platform_matrix }}
+      push: ${{ steps.policy.outputs.push }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Resolve release version
+        id: release
+        shell: bash
+        env:
+          MANUAL_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            python3 .github/scripts/resolve_release_version.py \
+              --tag "$MANUAL_VERSION" \
+              --allow-label \
+              --github-output "$GITHUB_OUTPUT"
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            python3 .github/scripts/resolve_release_version.py \
+              --tag "$GITHUB_REF_NAME" \
+              --github-output "$GITHUB_OUTPUT"
+          else
+            python3 .github/scripts/resolve_release_version.py \
+              --tag "ci-${GITHUB_SHA:0:12}" \
+              --allow-label \
+              --github-output "$GITHUB_OUTPUT"
+          fi
+
+      - name: Resolve build policy
+        id: policy
+        shell: bash
+        env:
+          MANUAL_PLATFORMS: ${{ inputs.platforms }}
+          MANUAL_PUSH: ${{ inputs.push }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            case "$MANUAL_PLATFORMS" in
+              linux/amd64|linux/arm64|linux/amd64,linux/arm64|linux/arm64,linux/amd64) ;;
+              *)
+                echo "Unsupported Docker platforms: $MANUAL_PLATFORMS" >&2
+                exit 1
+                ;;
+            esac
+            platforms="$MANUAL_PLATFORMS"
+            push="$MANUAL_PUSH"
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            platforms="linux/amd64,linux/arm64"
+            push="true"
+          else
+            platforms="linux/amd64"
+            push="false"
+          fi
+          platform_matrix="$(jq -cn --arg platforms "$platforms" '$platforms | split(",")')"
+          {
+            echo "platforms=$platforms"
+            echo "push=$push"
+            echo "platform_matrix=$platform_matrix"
+          } >> "$GITHUB_OUTPUT"
+          echo "platforms=$platforms push=$push matrix=$platform_matrix"
+
+  build:
+    needs: [quality-gate, prepare, resolve]
+    if: needs.resolve.outputs.mode == 'build'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/build-docker-images.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+      platforms: ${{ needs.prepare.outputs.platforms }}
+      platform_matrix: ${{ needs.prepare.outputs.platform_matrix }}
+      push: ${{ needs.prepare.outputs.push == 'true' }}
+      candidate_tag: candidate-${{ github.sha }}-${{ github.run_id }}
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  publish:
+    needs: [prepare, build]
+    if: github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.push == true)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout release revision
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Resolve release version
+        id: release
+        shell: bash
+        env:
+          MANUAL_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            python3 .github/scripts/resolve_release_version.py \
+              --tag "$MANUAL_VERSION" \
+              --allow-label \
+              --github-output "$GITHUB_OUTPUT"
+          else
+            python3 .github/scripts/resolve_release_version.py \
+              --tag "$GITHUB_REF_NAME" \
+              --github-output "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Download app candidate identity
+        uses: actions/download-artifact@v7
+        with:
+          name: docker-candidate-app-${{ github.run_id }}
+          path: docker-candidates
+
+      - name: Download web candidate identity
+        uses: actions/download-artifact@v7
+        with:
+          name: docker-candidate-web-${{ github.run_id }}
+          path: docker-candidates
+
+      - name: Resolve Docker Hub namespace
+        id: hub
+        shell: bash
+        run: |
+          user="${{ secrets.DOCKERHUB_USERNAME }}"
+          if [ -z "$user" ]; then
+            user="${GITHUB_REPOSITORY_OWNER}"
+          fi
+          echo "user=${user}" >> "$GITHUB_OUTPUT"
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Verify release identity before promotion
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          head_sha="$(git rev-parse HEAD)"
+          if [ "$head_sha" != "$GITHUB_SHA" ]; then
+            echo "Checked out revision does not match this run: head=$head_sha expected=$GITHUB_SHA" >&2
+            exit 1
+          fi
+
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            remote_sha="$(git ls-remote origin "refs/tags/${GITHUB_REF_NAME}^{}" | awk 'NR == 1 { print $1 }')"
+            if [ -z "$remote_sha" ]; then
+              remote_sha="$(git ls-remote origin "refs/tags/${GITHUB_REF_NAME}" | awk 'NR == 1 { print $1 }')"
+            fi
+            if [ "$remote_sha" != "$GITHUB_SHA" ]; then
+              echo "Release tag moved while Docker images were building: remote=$remote_sha expected=$GITHUB_SHA" >&2
+              exit 1
+            fi
+          else
+            case "$RELEASE_TAG" in
+              dev|dev-*|manual-*) ;;
+              *)
+                echo "Manual Docker publishing only accepts dev, dev-*, or manual-* labels" >&2
+                exit 1
+                ;;
+            esac
+          fi
+
+      - name: Verify and promote complete Docker release
+        uses: ./.github/actions/docker-candidates
+        with:
+          candidates-dir: docker-candidates
+          image-namespace: ${{ steps.hub.outputs.user }}
+          expected-version: ${{ steps.release.outputs.version }}
+          expected-revision: ${{ github.sha }}
+          expected-platforms: ${{ needs.prepare.outputs.platforms }}
+          release-tag: ${{ steps.release.outputs.tag }}
+          stable: ${{ steps.release.outputs.stable }}
+
+  # ---------------- 提升路径：把 main 上预构建的候选打成版本标签 ----------------
+
+  # 只在 tag push 且 resolve 判定可提升时运行（PR / dispatch 永远走不到这里）。
+  # 跨 run 下载 candidate identity 需要 run-id + github-token（actions: read）；
+  # 提升前在这里再完整校验一遍（硬门禁），校验失败就不打任何标签。
+  promote:
+    needs: resolve
+    if: github.event_name == 'push' && github.ref_type == 'tag' && needs.resolve.outputs.mode == 'promote'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: read
+
+    steps:
+      - name: Checkout release revision
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Download prebuilt candidate identities
+        uses: actions/download-artifact@v7
+        with:
+          pattern: docker-candidate-*-${{ needs.resolve.outputs.run_id }}
+          path: docker-candidates
+          merge-multiple: true
+          run-id: ${{ needs.resolve.outputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Resolve Docker Hub namespace
+        id: hub
+        shell: bash
+        run: |
+          user="${{ secrets.DOCKERHUB_USERNAME }}"
+          if [ -z "$user" ]; then
+            user="${GITHUB_REPOSITORY_OWNER}"
+          fi
+          echo "user=${user}" >> "$GITHUB_OUTPUT"
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Verify release tag still targets this revision
+        shell: bash
+        run: |
+          head_sha="$(git rev-parse HEAD)"
+          remote_sha="$(git ls-remote origin "refs/tags/${GITHUB_REF_NAME}^{}" | awk 'NR == 1 { print $1 }')"
+          if [ -z "$remote_sha" ]; then
+            remote_sha="$(git ls-remote origin "refs/tags/${GITHUB_REF_NAME}" | awk 'NR == 1 { print $1 }')"
+          fi
+          if [ "$head_sha" != "$GITHUB_SHA" ] || [ "$remote_sha" != "$GITHUB_SHA" ]; then
+            echo "Release tag does not target this revision: head=$head_sha remote=$remote_sha expected=$GITHUB_SHA" >&2
+            exit 1
+          fi
+
+      - name: Verify and promote prebuilt Docker release
+        uses: ./.github/actions/docker-candidates
+        with:
+          candidates-dir: docker-candidates
+          image-namespace: ${{ steps.hub.outputs.user }}
+          expected-version: ${{ needs.resolve.outputs.version }}
+          expected-revision: ${{ github.sha }}
+          expected-platforms: linux/amd64,linux/arm64
+          release-tag: ${{ needs.resolve.outputs.tag }}
+          stable: ${{ needs.resolve.outputs.stable }}
