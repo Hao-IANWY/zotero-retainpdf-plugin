@@ -1,0 +1,121 @@
+name: Prebuild Release Candidates
+run-name: Prebuild Release Candidates · ${{ github.sha }}
+
+# push main 时把「可发布候选」提前构建好，打 tag 时 release-docker.yml 只需提升、
+# 不再重新构建：
+# - Docker：app / web 多架构镜像，按 digest 推送后合成 manifest list，打上可覆盖的
+#   candidate-<sha> 标签，并上传 docker-candidate-<target>-<run_id> identity artifact。
+#
+# 版本号用这个 commit 的「声明版本」（resolve_declared_version.py：四个清单一致的
+# 版本号）。只有 tag 版本与之相等时才会提升，所以产物里的版本字符串与「打了 tag
+# 再构建」完全一致；不相等时发版 workflow 自动回退到完整构建。
+#
+# 与 Tests 并行、互不阻塞：Tests 是否通过由发版 workflow 在提升前查询（同 sha 的
+# Tests run 必须成功），这里不重复跑测试。
+#
+# 并发：同一时刻只跑一份、不取消正在跑的那份（cancel-in-progress: false）——
+# 正在构建的可能正是马上要打 tag 的 release commit。连续 push 时排队中的旧 run
+# 会被更新的 push 替换掉，被替换的 commit 打 tag 时会回退到完整构建。
+#
+# 只改文档不预构建（paths-ignore）；这样的 commit 打 tag 同样会回退到完整构建。
+
+"on":
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+  # 手动补一份候选（例如预构建 artifact 过期后又要在这个 commit 上发版）。
+  # 只接受 main：prepare 的 job 级条件会跳过其他分支，提升判定也只认 main 上的 run。
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prebuild-release-candidates-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.declared.outputs.version }}
+      platforms: ${{ steps.policy.outputs.platforms }}
+      platform_matrix: ${{ steps.policy.outputs.platform_matrix }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # 四个清单版本不一致时直接失败：这样的 commit 没有可信的声明版本，
+      # 不产出候选（打 tag 会回退到完整构建）。
+      - name: Resolve declared application version
+        id: declared
+        shell: bash
+        run: python3 .github/scripts/resolve_declared_version.py --github-output "$GITHUB_OUTPUT"
+
+      - name: Resolve build policy
+        id: policy
+        shell: bash
+        run: |
+          platforms="linux/amd64,linux/arm64"
+          platform_matrix="$(jq -cn --arg platforms "$platforms" '$platforms | split(",")')"
+          {
+            echo "platforms=$platforms"
+            echo "platform_matrix=$platform_matrix"
+          } >> "$GITHUB_OUTPUT"
+
+  docker:
+    needs: prepare
+    permissions:
+      contents: read
+    uses: ./.github/workflows/build-docker-images.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+      platforms: ${{ needs.prepare.outputs.platforms }}
+      platform_matrix: ${{ needs.prepare.outputs.platform_matrix }}
+      push: true
+      candidate_tag: candidate-${{ github.sha }}
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  # 候选标签越积越多：删掉超过 10 天的 candidate-*（比 7 天 artifact 保留期更老，
+  # 不可能再被提升）。尽力而为，失败不影响本次预构建的结论。
+  prune-docker-candidates:
+    needs: docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Resolve Docker Hub namespace
+        id: hub
+        shell: bash
+        run: |
+          user="${{ secrets.DOCKERHUB_USERNAME }}"
+          if [ -z "$user" ]; then
+            user="${GITHUB_REPOSITORY_OWNER}"
+          fi
+          echo "user=${user}" >> "$GITHUB_OUTPUT"
+
+      - name: Prune stale candidate tags
+        shell: bash
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          IMAGE_NAMESPACE: ${{ steps.hub.outputs.user }}
+        run: |
+          python3 .github/scripts/prune_docker_candidate_tags.py \
+            --namespace "$IMAGE_NAMESPACE" \
+            --repo retainpdf-app \
+            --repo retainpdf-web \
+            --max-age-days 10 \
+            --keep "candidate-${GITHUB_SHA}"

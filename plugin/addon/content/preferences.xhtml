@@ -1,0 +1,279 @@
+<linkset>
+  <html:link rel="localization" href="__addonRef__-preferences.ftl" />
+</linkset>
+<vbox
+  class="rp-root"
+  onload="Zotero.__addonInstance__.hooks.onPrefsEvent('load', { window })"
+>
+  <groupbox class="rp-group">
+    <hbox class="rp-group-header" align="center">
+      <vbox flex="1">
+        <html:h2 class="rp-group-title" data-l10n-id="pref-title"></html:h2>
+        <html:div
+          class="rp-group-desc"
+          data-l10n-id="pref-server-desc"
+        ></html:div>
+      </vbox>
+      <button
+        id="zotero-prefpane-__addonRef__-check-server"
+        class="rp-check-btn"
+        data-l10n-id="pref-check"
+        oncommand="
+          Zotero.__addonInstance__.hooks.onPrefsEvent('checkConnection', {
+            window,
+          })
+        "
+      ></button>
+    </hbox>
+    <html:div
+      class="rp-status"
+      id="zotero-prefpane-__addonRef__-check-result-server"
+      role="status"
+      hidden="true"
+    ></html:div>
+    <vbox class="rp-fields">
+      <hbox class="rp-field" align="center">
+        <html:label
+          class="rp-label"
+          for="zotero-prefpane-__addonRef__-server"
+          data-l10n-id="pref-server"
+        ></html:label>
+        <html:input
+          class="rp-input"
+          type="text"
+          id="zotero-prefpane-__addonRef__-server"
+          preference="serverBaseURL"
+          flex="1"
+        ></html:input>
+      </hbox>
+    </vbox>
+  </groupbox>
+  <groupbox class="rp-group">
+    <hbox class="rp-group-header" align="center">
+      <vbox flex="1">
+        <html:h2 class="rp-group-title" data-l10n-id="pref-ocr-title"></html:h2>
+        <html:div class="rp-group-desc" data-l10n-id="pref-ocr-desc"></html:div>
+      </vbox>
+      <button
+        id="zotero-prefpane-__addonRef__-check-ocr"
+        class="rp-check-btn"
+        data-l10n-id="pref-check"
+        oncommand="
+          Zotero.__addonInstance__.hooks.onPrefsEvent('checkOcr', { window })
+        "
+      ></button>
+    </hbox>
+    <html:div
+      class="rp-status"
+      id="zotero-prefpane-__addonRef__-check-result-ocr"
+      role="status"
+      hidden="true"
+    ></html:div>
+    <vbox class="rp-fields">
+      <hbox class="rp-field" align="center">
+        <html:label
+          class="rp-label"
+          data-l10n-id="pref-ocr-engine"
+        ></html:label>
+        <hbox
+          class="rp-segment"
+          id="zotero-prefpane-__addonRef__-ocr-provider"
+          role="radiogroup"
+        >
+          <html:button
+            class="rp-segment-item"
+            role="radio"
+            aria-checked="false"
+            data-value="paddle"
+            data-l10n-id="pref-ocr-paddle"
+          ></html:button>
+          <html:button
+            class="rp-segment-item"
+            role="radio"
+            aria-checked="false"
+            data-value="mineru"
+            data-l10n-id="pref-ocr-mineru"
+          ></html:button>
+        </hbox>
+      </hbox>
+      <hbox
+        class="rp-field"
+        align="center"
+        id="zotero-prefpane-__addonRef__-paddle-token-row"
+      >
+        <html:label
+          class="rp-label"
+          for="zotero-prefpane-__addonRef__-paddle-token"
+          data-l10n-id="pref-paddle-token"
+        ></html:label>
+        <hbox class="rp-secret" flex="1" align="center">
+          <html:input
+            class="rp-input"
+            type="password"
+            id="zotero-prefpane-__addonRef__-paddle-token"
+            preference="paddleToken"
+            flex="1"
+          ></html:input>
+        </hbox>
+      </hbox>
+      <hbox
+        class="rp-field"
+        align="center"
+        id="zotero-prefpane-__addonRef__-mineru-token-row"
+      >
+        <html:label
+          class="rp-label"
+          for="zotero-prefpane-__addonRef__-mineru-token"
+          data-l10n-id="pref-mineru-token"
+        ></html:label>
+        <hbox class="rp-secret" flex="1" align="center">
+          <html:input
+            class="rp-input"
+            type="password"
+            id="zotero-prefpane-__addonRef__-mineru-token"
+            preference="mineruToken"
+            flex="1"
+          ></html:input>
+        </hbox>
+      </hbox>
+    </vbox>
+  </groupbox>
+  <groupbox class="rp-group">
+    <hbox class="rp-group-header" align="center">
+      <vbox flex="1">
+        <html:h2 class="rp-group-title" data-l10n-id="pref-llm-title"></html:h2>
+        <html:div class="rp-group-desc" data-l10n-id="pref-llm-desc"></html:div>
+      </vbox>
+      <button
+        id="zotero-prefpane-__addonRef__-check-llm"
+        class="rp-check-btn"
+        data-l10n-id="pref-check"
+        oncommand="
+          Zotero.__addonInstance__.hooks.onPrefsEvent('checkLlm', { window })
+        "
+      ></button>
+    </hbox>
+    <html:div
+      class="rp-status"
+      id="zotero-prefpane-__addonRef__-check-result-llm"
+      role="status"
+      hidden="true"
+    ></html:div>
+    <vbox class="rp-fields">
+      <hbox class="rp-field" align="center">
+        <html:label class="rp-label" data-l10n-id="pref-llm-mode"></html:label>
+        <hbox
+          class="rp-segment"
+          id="zotero-prefpane-__addonRef__-llm-mode"
+          role="radiogroup"
+        >
+          <html:button
+            class="rp-segment-item"
+            role="radio"
+            aria-checked="false"
+            data-value="deepseek"
+            data-l10n-id="pref-llm-deepseek"
+          ></html:button>
+          <html:button
+            class="rp-segment-item"
+            role="radio"
+            aria-checked="false"
+            data-value="custom"
+            data-l10n-id="pref-llm-custom"
+          ></html:button>
+        </hbox>
+      </hbox>
+      <hbox
+        class="rp-field"
+        align="center"
+        id="zotero-prefpane-__addonRef__-llm-base-url-official-row"
+      >
+        <html:label
+          class="rp-label"
+          for="zotero-prefpane-__addonRef__-llm-base-url-official"
+          data-l10n-id="pref-llm-base-url"
+        ></html:label>
+        <html:input
+          class="rp-input rp-input-static"
+          type="text"
+          id="zotero-prefpane-__addonRef__-llm-base-url-official"
+          readonly="true"
+          flex="1"
+        ></html:input>
+      </hbox>
+      <hbox
+        class="rp-field"
+        align="center"
+        id="zotero-prefpane-__addonRef__-llm-base-url-custom-row"
+      >
+        <html:label
+          class="rp-label"
+          for="zotero-prefpane-__addonRef__-llm-base-url"
+          data-l10n-id="pref-llm-base-url"
+        ></html:label>
+        <html:input
+          class="rp-input"
+          type="text"
+          id="zotero-prefpane-__addonRef__-llm-base-url"
+          preference="llmBaseUrl"
+          flex="1"
+        ></html:input>
+      </hbox>
+      <hbox class="rp-field" align="center">
+        <html:label
+          class="rp-label"
+          for="zotero-prefpane-__addonRef__-llm-api-key"
+          data-l10n-id="pref-llm-api-key"
+        ></html:label>
+        <hbox class="rp-secret" flex="1" align="center">
+          <html:input
+            class="rp-input"
+            type="password"
+            id="zotero-prefpane-__addonRef__-llm-api-key"
+            preference="llmApiKey"
+            flex="1"
+          ></html:input>
+        </hbox>
+      </hbox>
+      <hbox class="rp-field" align="center">
+        <html:label
+          class="rp-label"
+          for="zotero-prefpane-__addonRef__-llm-model"
+          data-l10n-id="pref-llm-model"
+        ></html:label>
+        <hbox class="rp-model-picker" flex="1" align="center">
+          <html:select
+            class="rp-input rp-select"
+            id="zotero-prefpane-__addonRef__-llm-model"
+            flex="1"
+          ></html:select>
+          <html:button
+            class="rp-icon-btn rp-refresh-btn"
+            id="zotero-prefpane-__addonRef__-llm-models-refresh"
+            type="button"
+          ></html:button>
+        </hbox>
+      </hbox>
+      <hbox class="rp-field" align="center">
+        <html:label
+          class="rp-label"
+          for="zotero-prefpane-__addonRef__-workers"
+          data-l10n-id="pref-workers"
+        ></html:label>
+        <html:input
+          class="rp-input rp-input-narrow"
+          type="text"
+          id="zotero-prefpane-__addonRef__-workers"
+          preference="workers"
+        ></html:input>
+      </hbox>
+    </vbox>
+  </groupbox>
+  <vbox class="rp-footer">
+    <html:label
+      class="rp-build"
+      data-l10n-id="pref-help"
+      data-l10n-args='{"time": "__buildTime__","name": "__addonName__","version":"__buildVersion__"}'
+    ></html:label>
+  </vbox>
+</vbox>

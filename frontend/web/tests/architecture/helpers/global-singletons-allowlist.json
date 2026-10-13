@@ -1,0 +1,6 @@
+[
+  "src/features/task-center/ui/TaskCenter.tsx::new-collection::ACTIVE_STATUSES",
+  "src/platform/config/runtime.ts::let-var::runtimeConfig",
+  "src/platform/utils/download-feedback.ts::let-var::hideTimer",
+  "src/ui/theme/theme.ts::let-var::booted"
+]

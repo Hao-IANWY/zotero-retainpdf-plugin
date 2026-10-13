@@ -1,0 +1,267 @@
+name: Tests
+
+# 全量测试门禁：rust workspace + 前端（含棘轮/边界门禁）+ Python 服务。
+# 此前这三套只在本地跑，CI 无人站岗——门禁存在但拦不住绕过（先例：v4.1.9
+# home-ask 带着 4 类门禁违规发布）。pipeline 覆盖全量离线回归，
+# 包括渲染、排版、命令契约、包边界及 durable stage 测试。
+
+"on":
+  workflow_call: {}
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  # Tag releases may call this workflow from the Docker release workflow.
+  # Never cancel a release gate midway.
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+jobs:
+  architecture:
+    uses: ./.github/workflows/rust-api-architecture.yml
+
+  rust-workspace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Prepare embedded backend package
+        id: backend
+        uses: ./.github/actions/prepare-backend-source
+
+      - name: Setup uv
+        # astral-sh/setup-uv v9.0.0
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        with:
+          version: "0.11.19"
+          python-version: "3.11"
+
+      - name: Install locked Python workspace for executor tests
+        run: uv sync --project "$RETAIN_PDF_SERVICES_ROOT" --locked --all-extras
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      # Cargo workspace 在仓库根（根 Cargo.toml 的 members 含 7 个 crate），产物在
+      # 根目录 target/。这里必须指向 source_root；此前写成 outputs.path 下的 api
+      # 子目录，缓存的是那个几乎为空的 target，命中了也照样从 proc-macro2、tokio 全量重编。
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ${{ steps.backend.outputs.source_root }} -> target
+
+      # 必须 --workspace：裸 cargo test 只跑主 crate，会漏掉
+      # retain-core/retain-data/retain-jobs 三个子 crate 的测试
+      # 通过 uv 启动 cargo，确保 Rust 集成测试派生的 python3 继承已安装
+      # PyMuPDF 等依赖的 Python 虚拟环境，而不是误用 runner 的系统 Python。
+      - name: Cargo Workspace Tests
+        run: uv run --project "$RETAIN_PDF_SERVICES_ROOT" cargo test --locked --workspace --manifest-path "$RETAIN_PDF_SOURCE_ROOT/Cargo.toml"
+
+  packages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22.22.0"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install (root workspaces)
+        run: npm ci
+
+      - name: Test and build @retainpdf/contracts
+        run: |
+          npm --prefix contracts test
+          npm --prefix contracts run typecheck
+          npm --prefix contracts run build
+
+      - name: Typecheck and build @retainpdf/domain
+        run: |
+          npm --prefix frontend/packages/domain run typecheck
+          npm --prefix frontend/packages/domain run build
+
+      - name: Build @retainpdf/ui
+        run: npm --prefix frontend/packages/ui run build
+
+      - name: Build @retainpdf/api
+        run: npm --prefix frontend/packages/api run build
+
+  # 不 needs packages：下面会自己 npm ci 并重建全部 workspace 包，不消费
+  # packages job 的任何 artifact / output；串行只会让前端测试干等。
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22.22.0"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install (root workspaces)
+        run: npm ci
+
+      - name: Build frontend package dependencies
+        run: |
+          npm --prefix contracts run build
+          npm --prefix frontend/packages/domain run build
+          npm --prefix frontend/packages/ui run build
+          npm --prefix frontend/packages/api run build
+
+      - name: Frontend Typecheck
+        # deps were just built above, so skip the pretypecheck ->
+        # prepare:workspace rebuild (and its duplicate prepare:workspace run).
+        run: npm --prefix frontend/web run typecheck --ignore-scripts
+
+      - name: Frontend Tests
+        working-directory: frontend/web
+        run: npm test
+
+  python-services:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Prepare embedded backend package
+        id: backend
+        uses: ./.github/actions/prepare-backend-source
+
+      - name: Setup uv
+        # astral-sh/setup-uv v9.0.0
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        with:
+          version: "0.11.19"
+          python-version: "3.11"
+
+      - name: Install
+        run: uv sync --project "$RETAIN_PDF_SERVICES_ROOT" --locked --all-extras
+
+      - name: Check generated dependency manifests
+        run: uv run --project "$RETAIN_PDF_SERVICES_ROOT" python .github/scripts/sync_backend_python_requirements.py --repo-root . --services-root "$RETAIN_PDF_SERVICES_ROOT" --check
+
+      # docs/core/python/ 下那四份扫描产物此前没有任何校验，谁都不会想起重跑，
+      # 于是它带着 retainpdf_pipeline/services/rendering/... 这种早就不存在的
+      # 路径漂了半年。--services-root 必须传仓库相对路径：产物里记着
+      # "services_root": "backend"，传绝对路径会把 runner 的临时目录写进去。
+      - name: Check generated pipeline dependency reports
+        run: |
+          services_relative="${RETAIN_PDF_SERVICES_ROOT#"$GITHUB_WORKSPACE/"}"
+          uv run --project "$RETAIN_PDF_SERVICES_ROOT" python \
+            "$RETAIN_PDF_SERVICES_ROOT/pipeline/devtools/extract_pipeline_requirements.py" \
+            --services-root "$services_relative" --check
+
+      - name: Check installed command contracts
+        run: |
+          uv run --project "$RETAIN_PDF_SERVICES_ROOT" retainpdf-pipeline --help
+          uv run --project "$RETAIN_PDF_SERVICES_ROOT" python -c "import retainpdf_pipeline"
+
+      # 这一步必须排在装 typst 之前——它验证的就是「机器上没有 typst 时单元测试
+      # 依然全绿」。#106 把二进制定位移进 try 内之后有 15 个用例悄悄开始依赖
+      # 机器上装没装 typst，本机和 CI 都有，两边同时看不见，直到有人在干净的
+      # checkout 上跑才炸。
+      #
+      # 真需要跑一遍排版的集成用例打 @pytest.mark.needs_typst 排除掉；单元测试
+      # 应当 stub 掉定位函数，而不是靠这个标记逃避。
+      - name: Hermetic pipeline tests (Typst not installed yet)
+        run: |
+          if command -v typst >/dev/null 2>&1 || [ -n "${TYPST_BIN:-}" ]; then
+            echo "::error::这一步必须排在 setup-test-typst 之前，否则它什么都验证不了" >&2
+            exit 1
+          fi
+          uv run --project "$RETAIN_PDF_SERVICES_ROOT" python -m pytest \
+            "$RETAIN_PDF_SERVICES_ROOT/pipeline/devtools/tests" -q -m "not needs_typst"
+
+      - name: Setup Typst for offline formula tests
+        uses: ./.github/actions/setup-test-typst
+
+      # AI 服务测试排在装 typst 之后：test_the_board_examples_only_name_tools_that_exist
+      # 要求 agent 说明书里的命令（cat、typst）在机器上真的存在 —— agent 和流水线跑在
+      # 同一个环境里，typst 是运行时依赖。「没有 typst 也得全绿」只约束上面那步流水线
+      # 单元测试，不约束这里。以前这一步一直被前面的依赖清单检查挡住、从没跑到过。
+      - name: AI Service Tests
+        run: uv run --project "$RETAIN_PDF_SERVICES_ROOT" python -m pytest "$RETAIN_PDF_SERVICES_ROOT/ai/tests" -q
+
+      - name: Offline translation regression
+        run: uv run --project "$RETAIN_PDF_SERVICES_ROOT" python "$RETAIN_PDF_SERVICES_ROOT/pipeline/devtools/run_translation_tests.py"
+
+      # 与上面「Typst not installed yet」那步互补：那步已跑完 not needs_typst 的全部
+      # 用例，这里只补 needs_typst 的真排版集成用例。两步的 -m 互为补集，合起来就是
+      # pipeline/devtools/tests 全集——以前这里不带 -m 全量再跑一遍，前两千多个用例
+      # 白跑两次。前提：凡是依赖 typst 的用例都必须打 needs_typst（只写 skipif 的会
+      # 在上一步被跳过、这一步又选不中，从此没人跑）。
+      - name: Typst integration pipeline tests (rendering and durable stages)
+        run: uv run --project "$RETAIN_PDF_SERVICES_ROOT" python -m pytest "$RETAIN_PDF_SERVICES_ROOT/pipeline/devtools/tests" -q -m needs_typst
+
+  backend-standalone:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Prepare embedded backend package
+        id: backend
+        uses: ./.github/actions/prepare-backend-source
+
+      - name: Setup uv
+        # astral-sh/setup-uv v9.0.0
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        with:
+          version: "0.11.19"
+          python-version: "3.11"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install locked backend test environment
+        run: uv sync --project "$RETAIN_PDF_SERVICES_ROOT" --locked --all-extras
+
+      - name: Test backend source resolver
+        run: uv run --project "$RETAIN_PDF_SERVICES_ROOT" python -m pytest .github/scripts/tests -q
+
+      # ops/ 下的开发与发布工具此前没有任何 CI 门禁 —— 43 条用例写了但从不运行，
+      # 而它们守的是「本地栈起不来」「发布包缺文件」这类很难查的东西。
+      - name: Test ops tooling
+        run: uv run --project "$RETAIN_PDF_SERVICES_ROOT" python -m pytest ops/development/tests ops/release/tests -q
+
+      - name: Check backend contract mirror parity
+        run: |
+          python3 "$RETAIN_PDF_SERVICES_ROOT/contracts/check_parity.py"
+          for backend_schema in "$RETAIN_PDF_SERVICES_ROOT"/contracts/*.schema.json; do
+            product_schema="$GITHUB_WORKSPACE/contracts/$(basename "$backend_schema")"
+            diff -- "$backend_schema" "$product_schema"
+          done
+
+      - name: Verify isolated backend workspace
+        run: python3 "$RETAIN_PDF_SOURCE_ROOT/ops/release/check_standalone.py" --compile-rust
+
+      - name: Build backend source archive
+        run: python3 "$RETAIN_PDF_SOURCE_ROOT/ops/release/build_source_archive.py"
+
+      - name: Upload backend source archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: retainpdf-backend-source-${{ steps.backend.outputs.tree }}
+          path: |
+            ${{ steps.backend.outputs.path }}/dist/*.tar.gz
+            ${{ steps.backend.outputs.path }}/dist/*.sha256
+          if-no-files-found: error

@@ -1,0 +1,393 @@
+name: Build Docker Images
+
+# app / web 两个镜像的唯一构建定义（reusable workflow），三处调用、共用同一份配置：
+# - prebuild-release-candidates.yml：push main 时用「声明版本」构建多架构候选，
+#   打上可覆盖的 candidate-<sha> 标签并写出 candidate identity artifact，
+#   打 tag 时由 release-docker.yml 直接把 digest 提升成版本标签；
+# - release-docker.yml：找不到可提升的候选时的回退完整构建（tag 版本），以及
+#   PR 冒烟 / workflow_dispatch 手动构建。
+#
+# build：每个镜像 × 每个平台一个 job，在对应架构的原生 runner 上构建，推送时
+# 按 digest 推送、不打 tag；merge：合成多架构 manifest list，打 candidate 标签，
+# 写出 docker-candidate-<target>-<run_id>（reusable workflow 里 github.run_id
+# 是调用方的 run id）。
+
+"on":
+  workflow_call:
+    inputs:
+      version:
+        description: "写进 RETAIN_PDF_VERSION build-arg 和 OCI version label 的版本号"
+        required: true
+        type: string
+      platforms:
+        description: "逗号分隔的目标平台，例如 linux/amd64,linux/arm64"
+        required: true
+        type: string
+      platform_matrix:
+        description: "platforms 的 JSON 数组形式，用作 build 矩阵"
+        required: true
+        type: string
+      push:
+        description: "是否按 digest 推送并合成 candidate（false 只构建；PR 时 load 进本地做冒烟）"
+        required: true
+        type: boolean
+      candidate_tag:
+        description: "合成后的多架构 manifest 打的候选标签"
+        required: true
+        type: string
+    secrets:
+      DOCKERHUB_USERNAME:
+        required: false
+      DOCKERHUB_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  # 每个镜像 × 每个平台一个 job，各自在对应架构的原生 runner 上构建（不再用 QEMU
+  # 模拟 arm64：v4.2.6 里 arm64 cargo build 在 QEMU 下要 58.7 分钟）。推送时按
+  # digest 推送、不打 tag，由 merge job 合成多架构 manifest list。
+  build:
+    runs-on: ${{ matrix.platform == 'linux/arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - name: app
+            repo: retainpdf-app
+          - name: web
+            repo: retainpdf-web
+        platform: ${{ fromJSON(inputs.platform_matrix) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Resolve platform slug
+        id: platform
+        shell: bash
+        env:
+          TARGET_PLATFORM: ${{ matrix.platform }}
+        run: |
+          # artifact 名 / cache scope 里不能带 `/`：linux/amd64 -> amd64。
+          case "$TARGET_PLATFORM" in
+            linux/amd64|linux/arm64) ;;
+            *)
+              echo "Unsupported Docker platform: $TARGET_PLATFORM" >&2
+              exit 1
+              ;;
+          esac
+          echo "slug=${TARGET_PLATFORM#linux/}" >> "$GITHUB_OUTPUT"
+          echo "runner arch: $(uname -m)"
+
+      - name: Prepare embedded backend package
+        if: matrix.target.name == 'app'
+        id: backend
+        uses: ./.github/actions/prepare-backend-source
+
+      - name: Resolve image build source
+        id: build-source
+        shell: bash
+        run: |
+          if [ "${{ matrix.target.name }}" = "app" ]; then
+            echo "context=${{ steps.backend.outputs.source_root }}" >> "$GITHUB_OUTPUT"
+            echo "file=${{ steps.backend.outputs.source_root }}/ops/deployment/docker/backend/Dockerfile.app" >> "$GITHUB_OUTPUT"
+          else
+            echo "context=$GITHUB_WORKSPACE" >> "$GITHUB_OUTPUT"
+            echo "file=$GITHUB_WORKSPACE/ops/deployment/docker/Dockerfile.web" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Resolve Docker Hub namespace
+        id: hub
+        run: |
+          user="${{ secrets.DOCKERHUB_USERNAME }}"
+          if [ -z "$user" ]; then
+            user="${GITHUB_REPOSITORY_OWNER}"
+          fi
+          echo "user=${user}" >> "$GITHUB_OUTPUT"
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ steps.hub.outputs.user }}/${{ matrix.target.repo }}
+          tags: |
+            type=raw,value=${{ inputs.candidate_tag }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ inputs.version }}
+
+      - name: Login to Docker Hub
+        if: inputs.push
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Generate build args
+        id: build-args
+        run: |
+          {
+            for var in http_proxy https_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY TYPST_VERSION; do
+              val="$(printenv "$var" || true)"
+              if [ -n "$val" ]; then
+                echo "${var}=${val}"
+              fi
+            done
+            echo "RETAIN_PDF_VERSION=${{ inputs.version }}"
+          } > /tmp/build-args.txt
+          {
+            echo 'args<<EOF'
+            cat /tmp/build-args.txt
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Resolve image output
+        id: image-output
+        shell: bash
+        env:
+          PUSH_IMAGE: ${{ inputs.push }}
+          IMAGE_NAME: ${{ steps.hub.outputs.user }}/${{ matrix.target.repo }}
+          META_TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          if [ "$PUSH_IMAGE" = "true" ]; then
+            # 只按 digest 推送单平台镜像、不打 tag；candidate tag 由 merge job
+            # 打在合成后的多架构 manifest list 上。
+            echo "outputs=type=image,name=${IMAGE_NAME},push-by-digest=true,name-canonical=true,push=true" >> "$GITHUB_OUTPUT"
+            echo "tags=" >> "$GITHUB_OUTPUT"
+          else
+            # 不推送：PR 构建 load 进本地 daemon 做冒烟；dispatch push=false 只验证能构建。
+            echo "outputs=" >> "$GITHUB_OUTPUT"
+            {
+              echo 'tags<<EOF'
+              printf '%s\n' "$META_TAGS"
+              echo 'EOF'
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      # 构建缓存放在 Docker Hub（registry 缓存），不再用 gha：
+      # - gha 缓存按 ref 隔离，tag run 写的下一个 tag 读不到，v4.2.6 一个 tag 白写了
+      #   3.8GB、挤掉 main 的缓存还多花约 6 分钟导出；
+      # - registry 缓存谁都能读：main 预构建写的、上一个 tag 回退构建写的，下一次
+      #   预构建、tag、PR、dispatch 都能命中，而且按内容寻址，没变的层（Rust 依赖层）
+      #   不会重复上传。
+      # 只有会推送镜像（已登录 Docker Hub）的路径写缓存；PR / push=false 的 dispatch
+      # 匿名只读。ignore-error：缓存导出失败不该让发版失败。
+      # 每个平台一个 ref，amd64 / arm64 并行写互不覆盖。
+      - name: Resolve build cache
+        id: cache
+        shell: bash
+        env:
+          PUSH_IMAGE: ${{ inputs.push }}
+          CACHE_REF: ${{ steps.hub.outputs.user }}/${{ matrix.target.repo }}:buildcache-${{ steps.platform.outputs.slug }}
+        run: |
+          echo "from=type=registry,ref=${CACHE_REF}" >> "$GITHUB_OUTPUT"
+          if [ "$PUSH_IMAGE" = "true" ]; then
+            echo "to=type=registry,ref=${CACHE_REF},mode=max,ignore-error=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "to=" >> "$GITHUB_OUTPUT"
+          fi
+          echo "cache ref: ${CACHE_REF} (write: ${PUSH_IMAGE})"
+
+      - name: Build and push
+        id: build-image
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ steps.build-source.outputs.context }}
+          file: ${{ steps.build-source.outputs.file }}
+          platforms: ${{ matrix.platform }}
+          # 推送走上面的 outputs（push-by-digest），不再用 push 开关。
+          push: false
+          outputs: ${{ steps.image-output.outputs.outputs }}
+          # Every matrix job is a native single-platform build, so loading PR
+          # images into the local daemon for the smoke test is safe.
+          load: ${{ github.event_name == 'pull_request' }}
+          build-args: ${{ steps.build-args.outputs.args }}
+          tags: ${{ steps.image-output.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: ${{ steps.cache.outputs.from }}
+          cache-to: ${{ steps.cache.outputs.to }}
+
+      - name: Export platform image digest
+        if: inputs.push
+        shell: bash
+        env:
+          IMAGE_DIGEST: ${{ steps.build-image.outputs.digest }}
+        run: |
+          if ! printf '%s' "$IMAGE_DIGEST" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+            echo "Build did not return a valid image digest: $IMAGE_DIGEST" >&2
+            exit 1
+          fi
+          mkdir -p docker-digests
+          touch "docker-digests/${IMAGE_DIGEST#sha256:}"
+          ls docker-digests
+
+      - name: Upload platform image digest
+        if: inputs.push
+        uses: actions/upload-artifact@v7
+        with:
+          name: docker-digest-${{ matrix.target.name }}-${{ steps.platform.outputs.slug }}-${{ github.run_id }}
+          path: docker-digests/*
+          if-no-files-found: error
+          retention-days: 1
+          overwrite: true
+
+      - name: Smoke loaded PR image
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          IMAGE_REF: ${{ steps.hub.outputs.user }}/${{ matrix.target.repo }}:${{ inputs.candidate_tag }}
+          TARGET_NAME: ${{ matrix.target.name }}
+        run: |
+          container="retainpdf-${TARGET_NAME}-pr-smoke"
+          cleanup() {
+            rc=$?
+            trap - EXIT
+            if [ "$rc" -ne 0 ]; then
+              docker logs "$container" 2>&1 || true
+            fi
+            docker rm -f "$container" >/dev/null 2>&1 || true
+            exit "$rc"
+          }
+          trap cleanup EXIT
+
+          docker image inspect "$IMAGE_REF" >/dev/null
+          if [ "$TARGET_NAME" = "web" ]; then
+            docker run -d \
+              --name "$container" \
+              --add-host app:127.0.0.1 \
+              -p 18080:80 \
+              "$IMAGE_REF"
+            probe_url="http://127.0.0.1:18080/"
+          else
+            docker run -d \
+              --name "$container" \
+              -e RUST_API_AI_SUPERVISE=0 \
+              -e RUST_API_KEYS=retainpdf-ci-smoke-key \
+              -p 14100:41000 \
+              "$IMAGE_REF"
+            probe_url="http://127.0.0.1:14100/health"
+          fi
+
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error "$probe_url" >/dev/null; then
+              echo "${TARGET_NAME} image smoke passed on attempt ${attempt}"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "${TARGET_NAME} image did not become ready at ${probe_url}" >&2
+          exit 1
+
+  # 把同一镜像各平台按 digest 推送的结果合成一个多架构 manifest list、打上
+  # candidate tag，再写出与拆分前结构相同的 candidate identity JSON（digest 是
+  # 合成后的 manifest list），publish 的校验与推广逻辑不变。
+  merge:
+    needs: build
+    if: inputs.push
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - name: app
+            repo: retainpdf-app
+          - name: web
+            repo: retainpdf-web
+
+    steps:
+      - name: Download platform image digests
+        uses: actions/download-artifact@v7
+        with:
+          pattern: docker-digest-${{ matrix.target.name }}-*-${{ github.run_id }}
+          path: docker-digests
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Resolve Docker Hub namespace
+        id: hub
+        shell: bash
+        run: |
+          user="${{ secrets.DOCKERHUB_USERNAME }}"
+          if [ -z "$user" ]; then
+            user="${GITHUB_REPOSITORY_OWNER}"
+          fi
+          echo "user=${user}" >> "$GITHUB_OUTPUT"
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Create multi-platform candidate manifest
+        id: manifest
+        shell: bash
+        env:
+          IMAGE_NAME: ${{ steps.hub.outputs.user }}/${{ matrix.target.repo }}
+          CANDIDATE_TAG: ${{ inputs.candidate_tag }}
+          TARGET_PLATFORMS: ${{ inputs.platforms }}
+        run: |
+          expected_count="$(printf '%s\n' "$TARGET_PLATFORMS" | tr ',' '\n' | grep -c .)"
+          mapfile -t digests < <(find docker-digests -maxdepth 1 -type f -printf '%f\n' | sort)
+          if [ "${#digests[@]}" -ne "$expected_count" ]; then
+            echo "Expected ${expected_count} platform digests for ${IMAGE_NAME}, got ${#digests[@]}: ${digests[*]}" >&2
+            exit 1
+          fi
+          sources=()
+          for digest in "${digests[@]}"; do
+            if ! printf '%s' "$digest" | grep -Eq '^[0-9a-f]{64}$'; then
+              echo "Invalid platform digest file: $digest" >&2
+              exit 1
+            fi
+            sources+=("${IMAGE_NAME}@sha256:${digest}")
+          done
+          docker buildx imagetools create --tag "${IMAGE_NAME}:${CANDIDATE_TAG}" "${sources[@]}"
+          docker buildx imagetools inspect "${IMAGE_NAME}:${CANDIDATE_TAG}"
+          merged_digest="$(docker buildx imagetools inspect "${IMAGE_NAME}:${CANDIDATE_TAG}" --format '{{json .Manifest}}' | jq -r '.digest')"
+          echo "digest=${merged_digest}" >> "$GITHUB_OUTPUT"
+
+      - name: Record candidate image identity
+        shell: bash
+        env:
+          TARGET_NAME: ${{ matrix.target.name }}
+          TARGET_REPO: ${{ matrix.target.repo }}
+          IMAGE_DIGEST: ${{ steps.manifest.outputs.digest }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          TARGET_PLATFORMS: ${{ inputs.platforms }}
+        run: |
+          if ! printf '%s' "$IMAGE_DIGEST" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+            echo "Merged manifest did not return a valid image digest: $IMAGE_DIGEST" >&2
+            exit 1
+          fi
+          mkdir -p docker-candidate
+          jq -n \
+            --arg target "$TARGET_NAME" \
+            --arg repo "$TARGET_REPO" \
+            --arg digest "$IMAGE_DIGEST" \
+            --arg revision "$GITHUB_SHA" \
+            --arg version "$RELEASE_VERSION" \
+            --arg platforms "$TARGET_PLATFORMS" \
+            '{target: $target, repo: $repo, digest: $digest, revision: $revision, version: $version, platforms: $platforms}' \
+            > "docker-candidate/${TARGET_NAME}.json"
+          cat "docker-candidate/${TARGET_NAME}.json"
+
+      - name: Upload candidate image identity
+        uses: actions/upload-artifact@v7
+        with:
+          name: docker-candidate-${{ matrix.target.name }}-${{ github.run_id }}
+          path: docker-candidate/${{ matrix.target.name }}.json
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true

@@ -1,0 +1,30 @@
+{
+  "name": "retain-pdf-monorepo",
+  "private": true,
+  "version": "4.2.6",
+  "workspaces": [
+    "frontend/web",
+    "frontend/packages/*",
+    "contracts",
+    "backend/packages/retainpdf2doc"
+  ],
+  "scripts": {
+    "build:web": "npm run build --workspace=front-tailwind-ui",
+    "test:web": "npm test --workspace=front-tailwind-ui",
+    "test:api": "python3 .github/scripts/run_with_backend_source.py -- uv run --project {backend} --locked --all-extras cargo test --locked --workspace --manifest-path {source_root}/Cargo.toml",
+    "test:translation": "python3 backend/pipeline/devtools/run_translation_tests.py",
+    "test:translation:tooling": "python3 backend/pipeline/devtools/run_translation_tests.py --suite tooling",
+    "test:translation:contract": "python3 backend/pipeline/devtools/run_translation_tests.py --suite benchmarks",
+    "dev:backend": "python3 ops/development/dev_stack.py",
+    "build:doc": "npm run build --workspace retainpdf2doc",
+    "test:doc": "npm test --workspace retainpdf2doc",
+    "verify:web": "npm run verify --workspace=front-tailwind-ui",
+    "check:rust": "cargo check --workspace",
+    "verify:rust": "cargo test --no-run --workspace",
+    "test:rust": "PATH=\"${UV_PROJECT_ENVIRONMENT:-$PWD/backend/.venv}/bin:$PATH\" cargo test --workspace",
+    "verify": "npm run verify:rust && npm run test:rust && npm run verify:web"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

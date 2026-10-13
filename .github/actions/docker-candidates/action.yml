@@ -1,0 +1,109 @@
+name: Verify and promote Docker candidates
+description: >-
+  Verify the app/web candidate identity JSONs and the multi-platform manifests
+  they point to (platforms + OCI revision/version labels), then optionally
+  promote the candidate digests to release tags with `imagetools create`
+  (no rebuild). Used verify-only by the release resolve job (to decide whether
+  a prebuilt candidate is promotable) and with a release tag by both the
+  full-build fallback (publish) and the prebuild promotion (promote) jobs.
+  The caller must set up Buildx and log in to Docker Hub first.
+
+inputs:
+  candidates-dir:
+    description: Directory containing app.json and web.json candidate identities.
+    required: true
+  image-namespace:
+    description: Docker Hub namespace (user or org).
+    required: true
+  expected-version:
+    description: Version every candidate and its OCI version label must carry.
+    required: true
+  expected-revision:
+    description: Commit every candidate and its OCI revision label must come from.
+    required: true
+  expected-platforms:
+    description: Comma separated platforms each candidate manifest must contain exactly.
+    required: true
+  release-tag:
+    description: Tag to promote the verified digests to. Empty means verify only.
+    required: false
+    default: ""
+  stable:
+    description: "'true' also moves the latest tag."
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Verify both candidate images
+      shell: bash
+      env:
+        CANDIDATES_DIR: ${{ inputs.candidates-dir }}
+        IMAGE_NAMESPACE: ${{ inputs.image-namespace }}
+        EXPECTED_VERSION: ${{ inputs.expected-version }}
+        EXPECTED_REVISION: ${{ inputs.expected-revision }}
+        EXPECTED_PLATFORMS: ${{ inputs.expected-platforms }}
+      run: |
+        python3 "$GITHUB_WORKSPACE/.github/scripts/release_candidate_manifest.py" verify-docker \
+          --dir "$CANDIDATES_DIR" \
+          --version "$EXPECTED_VERSION" \
+          --revision "$EXPECTED_REVISION" \
+          --platforms "$EXPECTED_PLATFORMS"
+        expected_platforms="$(printf '%s' "$EXPECTED_PLATFORMS" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep . | sort)"
+        for target in app web; do
+          repo="$(jq -r '.repo' "$CANDIDATES_DIR/${target}.json")"
+          digest="$(jq -r '.digest' "$CANDIDATES_DIR/${target}.json")"
+          image="${IMAGE_NAMESPACE}/${repo}@${digest}"
+          echo "Verifying ${image} for ${EXPECTED_PLATFORMS}"
+          docker buildx imagetools inspect "$image" --format '{{json .Image}}' > "$CANDIDATES_DIR/${target}-images.json"
+          actual_platforms="$(jq -r 'keys[]' "$CANDIDATES_DIR/${target}-images.json" | sort)"
+          if [ "$actual_platforms" != "$expected_platforms" ]; then
+            echo "Candidate platform mismatch for $target" >&2
+            echo "expected: $expected_platforms" >&2
+            echo "actual: $actual_platforms" >&2
+            exit 1
+          fi
+          label_mismatches="$(
+            jq \
+              --arg revision "$EXPECTED_REVISION" \
+              --arg version "$EXPECTED_VERSION" \
+              '[to_entries[] | select(
+                .value.config.Labels["org.opencontainers.image.revision"] != $revision or
+                .value.config.Labels["org.opencontainers.image.version"] != $version
+              )] | length' \
+              "$CANDIDATES_DIR/${target}-images.json"
+          )"
+          if [ "$label_mismatches" != "0" ]; then
+            echo "Candidate OCI identity labels do not match this release for $target" >&2
+            exit 1
+          fi
+        done
+
+    # 只在校验通过之后才动正式标签；按 digest 引用，不重新构建。
+    - name: Promote complete Docker release
+      if: inputs.release-tag != ''
+      shell: bash
+      env:
+        CANDIDATES_DIR: ${{ inputs.candidates-dir }}
+        IMAGE_NAMESPACE: ${{ inputs.image-namespace }}
+        RELEASE_TAG: ${{ inputs.release-tag }}
+        STABLE_RELEASE: ${{ inputs.stable }}
+      run: |
+        for target in app web; do
+          repo="$(jq -r '.repo' "$CANDIDATES_DIR/${target}.json")"
+          digest="$(jq -r '.digest' "$CANDIDATES_DIR/${target}.json")"
+          image="${IMAGE_NAMESPACE}/${repo}"
+          docker buildx imagetools create --tag "${image}:${RELEASE_TAG}" "${image}@${digest}"
+          docker buildx imagetools inspect "${image}:${RELEASE_TAG}"
+        done
+
+        if [ "$STABLE_RELEASE" = "true" ]; then
+          for target in app web; do
+            repo="$(jq -r '.repo' "$CANDIDATES_DIR/${target}.json")"
+            digest="$(jq -r '.digest' "$CANDIDATES_DIR/${target}.json")"
+            image="${IMAGE_NAMESPACE}/${repo}"
+            docker buildx imagetools create --tag "${image}:latest" "${image}@${digest}"
+            docker buildx imagetools inspect "${image}:latest"
+          done
+        fi
