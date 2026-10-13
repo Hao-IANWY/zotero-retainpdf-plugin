@@ -21,7 +21,6 @@ export default defineConfig({
       description: pkg.description,
       homepage: pkg.homepage,
       buildVersion: pkg.version,
-      buildTime: "{{buildTime}}",
     },
     prefs: {
       prefix: pkg.config.prefsPrefix,

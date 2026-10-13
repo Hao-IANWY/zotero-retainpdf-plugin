@@ -31,4 +31,4 @@ pref-models-need-key = Fill in base URL and API key first
 pref-workers = Workers
 pref-show-key = Show secret
 pref-hide-key = Hide secret
-pref-help = { $name } Build { $version } { $time }
+pref-help = { $name } v{ $version }
