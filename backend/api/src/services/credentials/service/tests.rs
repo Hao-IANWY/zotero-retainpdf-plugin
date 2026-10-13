@@ -452,8 +452,10 @@ fn concurrent_job_persistence_fences_credential_deletion() {
     .expect("persist job before releasing usage lock");
     drop(usage_guard);
 
+    // 30s:高负载机器上刚被锁挡住的删除线程要等调度才能醒来,2s 预算
+    // 会把环境性调度延迟变成假红;锁语义本身由 50ms 未完成断言守住。
     let result = done_rx
-        .recv_timeout(Duration::from_secs(2))
+        .recv_timeout(Duration::from_secs(30))
         .expect("deletion finishes after usage lock release");
     match result {
         Err(AppError::CredentialReference { code, status, .. }) => {

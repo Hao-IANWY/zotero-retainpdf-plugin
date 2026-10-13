@@ -61,11 +61,15 @@ fn profile(url: &str) -> ModelConnection {
         thinking: Thinking::Auto,
         stream: Some(false),
         allow_private_endpoint: true,
+        // 预算取宽松值:这里验证的是重试/脱敏/协议修复逻辑,不是到期行为
+        // (到期行为由 timeout_is_not_retried 单独覆盖)。200ms 级的本地
+        // HTTP 预算在高负载机器上并行跑全量测试时会偶发打穿,把断言
+        // 变成 read_idle_timeout 的环境性假红。
         deadlines: Deadlines {
-            queue_ms: 500,
-            connect_ms: 100,
-            idle_ms: 200,
-            total_ms: 700,
+            queue_ms: 5_000,
+            connect_ms: 3_000,
+            idle_ms: 5_000,
+            total_ms: 15_000,
         },
     }
 }
@@ -92,7 +96,9 @@ async fn server(app: Router) -> (String, tokio::task::JoinHandle<()>) {
     (format!("http://{addr}/v1"), task)
 }
 async fn terminal(executor: &ModelExecutor, job: &str, token: &str, id: &str) -> ModelOperation {
-    tokio::time::timeout(Duration::from_secs(4), async {
+    // 上限要盖过夹具里最长的到期路径(idle 5s + 重试间隔),否则高负载下
+    // 轮询先于终态超时,把环境性问题变成断言失败。
+    tokio::time::timeout(Duration::from_secs(30), async {
         loop {
             let op = executor.status(job, token, id).unwrap().unwrap();
             if !matches!(op.status.as_str(), "queued" | "running") {
@@ -397,7 +403,8 @@ async fn timeout_is_not_retried_and_pauses_new_units() {
             let seen = seen.clone();
             async move {
                 seen.fetch_add(1, Ordering::SeqCst);
-                tokio::time::sleep(Duration::from_secs(2)).await;
+                // 必须大于夹具 idle_ms(5s),否则不会再触发 read_idle_timeout
+                tokio::time::sleep(Duration::from_secs(6)).await;
                 Json(successful())
             }
         }),
