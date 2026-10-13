@@ -120,12 +120,6 @@ pub struct DeleteCredentialQuery {
     pub force: bool,
 }
 
-#[derive(Debug, Clone, Deserialize, Default)]
-pub struct ListCredentialQuery {
-    #[serde(default)]
-    pub include_values: bool,
-}
-
 #[derive(Debug, Clone, Serialize)]
 pub struct CredentialMetadataView {
     pub credential_ref: String,
@@ -136,8 +130,6 @@ pub struct CredentialMetadataView {
     pub revision: u64,
     pub created_at: String,
     pub updated_at: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub secret: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -159,28 +151,16 @@ pub struct CredentialDeleteView {
     pub revision: u64,
 }
 
-/// 只剩测试在用：路由走 list_credentials_with_values，要不要带值由查询参数决定。
-#[cfg(test)]
+/// 列表只回元数据，永不回 secret：这个路由过的是与任务接口同一把
+/// X-API-Key 门，浏览器侧部署里这把门防不住页面访客，把值吐出去等于
+/// 把密钥库明文挂在 API 上。要看值请在宿主机直接读 data/secrets/credentials.json。
 pub fn list_credentials(data_root: &Path) -> Result<CredentialListView, AppError> {
-    list_credentials_with_values(data_root, false)
-}
-
-pub fn list_credentials_with_values(
-    data_root: &Path,
-    include_values: bool,
-) -> Result<CredentialListView, AppError> {
     let vault = load_vault(data_root)?;
     Ok(CredentialListView {
         credentials: vault
             .credentials
             .iter()
-            .map(|(credential_ref, credential)| {
-                let mut view = metadata(credential_ref, credential);
-                if include_values {
-                    view.secret = Some(credential.secret.clone());
-                }
-                view
-            })
+            .map(|(credential_ref, credential)| metadata(credential_ref, credential))
             .collect(),
         revision: vault.revision,
     })
@@ -484,7 +464,6 @@ fn metadata(credential_ref: &str, credential: &StoredCredential) -> CredentialMe
         revision: credential.revision,
         created_at: credential.created_at.clone(),
         updated_at: credential.updated_at.clone(),
-        secret: None,
     }
 }
 

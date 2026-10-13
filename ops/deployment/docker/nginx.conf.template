@@ -72,6 +72,13 @@ server {
     proxy_send_timeout 1h;
   }
 
+  # The credential vault is host-local (manage it via 127.0.0.1:41000 with an
+  # API key).  It has no browser consumer, so never expose it through the web
+  # entry: in anonymous mode this route would be a public vault CRUD/reader.
+  location /api/v1/credentials {
+    return 403;
+  }
+
   # Uploads are streamed to the application instead of being fully buffered
   # by the proxy.  Download responses remain streamable and retain Range.
   location /api/ {

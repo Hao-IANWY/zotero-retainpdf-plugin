@@ -5,19 +5,17 @@ use crate::error::AppError;
 use crate::models::api::ApiResponse;
 use crate::routes::common::{build_credential_route_deps, ApiJson, ApiPath, ApiQuery};
 use crate::services::credentials::api::{
-    create_credential, delete_credential, get_credential_metadata, list_credentials_with_values,
+    create_credential, delete_credential, get_credential_metadata, list_credentials,
     update_credential, CreateCredentialInput, CredentialDeleteView, CredentialListView,
-    CredentialMutationView, DeleteCredentialQuery, ListCredentialQuery, UpdateCredentialInput,
+    CredentialMutationView, DeleteCredentialQuery, UpdateCredentialInput,
 };
 use crate::AppState;
 
 pub async fn list_credentials_route(
     State(state): State<AppState>,
-    ApiQuery(query): ApiQuery<ListCredentialQuery>,
 ) -> Result<impl axum::response::IntoResponse, AppError> {
     let deps = build_credential_route_deps(&state);
-    let view: CredentialListView =
-        list_credentials_with_values(deps.data_root, query.include_values)?;
+    let view: CredentialListView = list_credentials(deps.data_root)?;
     Ok((
         [(axum::http::header::CACHE_CONTROL, "no-store")],
         Json(ApiResponse::ok(view)),

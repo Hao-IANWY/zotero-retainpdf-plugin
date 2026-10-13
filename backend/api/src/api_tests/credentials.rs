@@ -71,6 +71,7 @@ async fn credential_api_persists_only_safe_metadata_in_responses() {
     );
     assert!(!listed.to_string().contains(secret));
 
+    // include_values 已删除：无论怎么传查询参数，列表也永不回 secret。
     let response = app
         .clone()
         .oneshot(
@@ -84,13 +85,17 @@ async fn credential_api_persists_only_safe_metadata_in_responses() {
         .unwrap();
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
-    let local_values = read_json(response).await;
-    assert_eq!(local_values["data"]["credentials"][0]["secret"], secret);
+    let requested_values = read_json(response).await;
+    assert!(!requested_values.to_string().contains(secret));
+    assert!(requested_values["data"]["credentials"][0]
+        .get("secret")
+        .is_none());
+
     let denied = app
         .clone()
         .oneshot(
             Request::builder()
-                .uri("/api/v1/credentials?include_values=true")
+                .uri("/api/v1/credentials")
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -339,4 +344,3 @@ async fn credential_delete_is_blocked_by_persisted_ocr_reference() {
         .to_string()
         .contains("job-referencing-ocr-credential"));
 }
-
