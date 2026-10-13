@@ -6,14 +6,14 @@ description: >-
   (no rebuild). Used verify-only by the release resolve job (to decide whether
   a prebuilt candidate is promotable) and with a release tag by both the
   full-build fallback (publish) and the prebuild promotion (promote) jobs.
-  The caller must set up Buildx and log in to Docker Hub first.
+  The caller must set up Buildx and log in to the target registry (GHCR) first.
 
 inputs:
   candidates-dir:
     description: Directory containing app.json and web.json candidate identities.
     required: true
   image-namespace:
-    description: Docker Hub namespace (user or org).
+    description: Image registry namespace (e.g. ghcr.io/<owner>).
     required: true
   expected-version:
     description: Version every candidate and its OCI version label must carry.

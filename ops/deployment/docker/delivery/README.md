@@ -48,7 +48,7 @@
 - CPU：至少 `4 核`
 - 内存：至少 `8GB`，推荐 `16GB` 或更高
 - 磁盘：至少预留 `10GB` 可用空间
-- 网络：需要能访问 Docker Hub、MinerU 和你的模型 API
+- 网络：需要能访问 GHCR（ghcr.io）、MinerU 和你的模型 API
 
 说明：
 
@@ -95,7 +95,7 @@ http://127.0.0.1:40001
 ## 文件作用
 
 - `docker-compose.yml`
-  Docker 编排入口。默认直接拉取 Docker Hub 镜像并启动 `app` + `web`。
+  Docker 编排入口。默认直接拉取 GHCR 镜像并启动 `app` + `web`。
 - `docker/app.env`
   后端运行参数。控制容器内路径、字体、端口、并发和上传限制。
 - `docker/web.env`
@@ -242,8 +242,8 @@ sudo systemctl reload nginx
 也可以这样启动：
 
 ```bash
-APP_IMAGE=wxyhgk/retainpdf-app:<version> \
-WEB_IMAGE=wxyhgk/retainpdf-web:<version> \
+APP_IMAGE=ghcr.io/wxyhgk/retainpdf-app:<version> \
+WEB_IMAGE=ghcr.io/wxyhgk/retainpdf-web:<version> \
 docker compose up -d
 ```
 

@@ -379,8 +379,8 @@ def test_release_docker_builds_each_platform_on_a_native_runner():
 def test_release_docker_never_exports_gha_caches():
     """gha 缓存按 ref 隔离，tag run 写的缓存下个 tag 读不到，只会挤掉 main 的缓存。
 
-    （v4.2.6 一个 tag 写了 3.8GB、多花约 6 分钟导出。）构建缓存改走 Docker Hub
-    的 registry 缓存，build job 里不应再出现 type=gha。
+    （v4.2.6 一个 tag 写了 3.8GB、多花约 6 分钟导出。）构建缓存改走镜像
+    registry（本仓库为 GHCR），build job 里不应再出现 type=gha。
     """
     build = _workflow_job("build-docker-images.yml", "build")
     assert "type=gha" not in build

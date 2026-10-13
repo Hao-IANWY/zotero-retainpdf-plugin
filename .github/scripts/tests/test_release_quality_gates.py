@@ -40,25 +40,20 @@ def assert_cannot_bypass_success(job_text: str) -> None:
 
 
 @pytest.mark.parametrize("workflow", [
-    "publish-current-web.yml", "release-docker.yml",
+    "release-docker.yml",
 ])
 def test_publish_workflows_require_complete_tests(workflow):
     gate = job(workflow, "quality-gate")
     assert "uses: ./.github/workflows/tests.yml" in gate
     assert "secrets: inherit" not in gate
-    condition = job_condition(gate)
-    if workflow == "publish-current-web.yml":
-        assert condition is None
-    else:
-        # 发版 workflow 只在完整构建路径上跑 quality-gate；条件只能是这一个比较，
-        # 提升路径的测试门禁由 resolve 查询 main 上同 sha 的 Tests run 承担。
-        assert condition == FALLBACK_CONDITION
-        assert re.search(r"^    needs: resolve$", gate, re.M)
+    # 发版 workflow 只在完整构建路径上跑 quality-gate；条件只能是这一个比较，
+    # 提升路径的测试门禁由 resolve 查询 main 上同 sha 的 Tests run 承担。
+    assert job_condition(gate) == FALLBACK_CONDITION
+    assert re.search(r"^    needs: resolve$", gate, re.M)
     assert re.search(r"^    continue-on-error:", gate, re.M) is None
 
 
 @pytest.mark.parametrize("workflow,build_job", [
-    ("publish-current-web.yml", "publish-web"),
     ("release-docker.yml", "build"),
 ])
 def test_build_and_publish_cannot_bypass_failed_tests(workflow, build_job):

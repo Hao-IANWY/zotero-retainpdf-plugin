@@ -35,11 +35,6 @@ name: Build Docker Images
         description: "合成后的多架构 manifest 打的候选标签"
         required: true
         type: string
-    secrets:
-      DOCKERHUB_USERNAME:
-        required: false
-      DOCKERHUB_TOKEN:
-        required: false
 
 permissions:
   contents: read
