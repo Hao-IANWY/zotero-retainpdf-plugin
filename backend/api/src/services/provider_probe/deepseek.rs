@@ -3,6 +3,9 @@ use serde_json::Value;
 use crate::config::DeepSeekRuntimeConfig;
 use crate::error::AppError;
 use crate::models::domain::now_iso;
+use crate::services::net_policy::{
+    read_body_capped, resolve_pinned_addresses, PROBE_BODY_CAP, ResolveError,
+};
 
 use super::types::{
     DeepSeekBalanceInfoView, DeepSeekBalanceView, DeepSeekTokenValidationRequest,
@@ -36,10 +39,16 @@ pub(crate) async fn validate_deepseek_token_view(
     let base_url = normalize_deepseek_base_url(&payload.base_url, &runtime);
     validate_provider_base_url(&base_url, runtime.allow_private_urls)?;
     let checked_at = now_iso();
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(runtime.probe_timeout_secs))
-        .build()
-        .map_err(|err| AppError::internal(format!("build deepseek probe client failed: {err}")))?;
+    let client = match build_pinned_probe_client(
+        &base_url,
+        runtime.allow_private_urls,
+        runtime.probe_timeout_secs,
+    )
+    .await
+    {
+        Ok(client) => client,
+        Err(error) => return probe_setup_outcome(error, base_url, checked_at),
+    };
 
     let model = payload.model.trim();
     if model.is_empty() {
@@ -112,7 +121,7 @@ async fn classify_deepseek_chat_probe_response(
         .get("x-request-id")
         .and_then(|value| value.to_str().ok())
         .map(|value| value.to_string());
-    let body_text = response.text().await.unwrap_or_default();
+    let body_text = read_body_capped(response, PROBE_BODY_CAP).await.unwrap_or_default();
 
     if status_code.is_success() {
         return MineruTokenValidationView {
@@ -222,12 +231,18 @@ pub(crate) async fn query_deepseek_balance_view(
         });
     };
 
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(runtime.probe_timeout_secs))
-        .build()
-        .map_err(|err| {
-            AppError::internal(format!("build deepseek balance client failed: {err}"))
-        })?;
+    // 余额接口的钉扎对象是实际请求的 balance_url 主机(官方 API 时可能与
+    // base_url 主机不同),策略必须跟着真实目标走。
+    let client = match build_pinned_probe_client(
+        &balance_url,
+        runtime.allow_private_urls,
+        runtime.probe_timeout_secs,
+    )
+    .await
+    {
+        Ok(client) => client,
+        Err(error) => return Ok(balance_setup_outcome(error, base_url, checked_at)),
+    };
     let response = client.get(balance_url).bearer_auth(api_key).send().await;
     let view = match response {
         Ok(resp) => classify_deepseek_balance_response(resp, base_url.clone(), checked_at).await,
@@ -243,6 +258,100 @@ fn normalize_deepseek_base_url(raw: &str, runtime: &DeepSeekRuntimeConfig) -> St
         runtime.default_base_url.trim_end_matches('/').to_string()
     } else {
         trimmed.to_string()
+    }
+}
+
+/// 探针客户端构建失败:DNS(瞬时)或策略(私网拒绝)。
+#[derive(Debug)]
+enum ProbeSetupError {
+    Dns(String),
+    Policy,
+    Build(String),
+}
+
+/// 探针客户端:解析并钉扎目标主机的**全部**地址(任一私网地址且未显式放行
+/// 即拒绝)、禁用重定向(重定向是绕过钉扎的后门)、不使用环境代理——与
+/// 模型执行器的出站策略一致,避免「检测通过、执行失败」或反向的窗口。
+async fn build_pinned_probe_client(
+    target_url: &str,
+    allow_private_urls: bool,
+    timeout_secs: u64,
+) -> Result<reqwest::Client, ProbeSetupError> {
+    let parsed =
+        url::Url::parse(target_url).map_err(|_| ProbeSetupError::Policy)?;
+    let host = parsed.host_str().ok_or(ProbeSetupError::Policy)?;
+    let port = parsed.port_or_known_default().unwrap_or(443);
+    let addresses = match resolve_pinned_addresses(host, port, allow_private_urls).await {
+        Ok(addresses) => addresses,
+        Err(ResolveError::Dns(message)) => return Err(ProbeSetupError::Dns(message)),
+        Err(ResolveError::Policy) => return Err(ProbeSetupError::Policy),
+    };
+    reqwest::Client::builder()
+        .no_proxy()
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(std::time::Duration::from_secs(timeout_secs))
+        .resolve_to_addrs(host, &addresses)
+        .build()
+        .map_err(|err| ProbeSetupError::Build(err.to_string()))
+}
+
+/// DNS 失败与既有 transport 错误同类(network_error,可重试);策略拒绝
+/// 是 400 配置错误;客户端构建失败是内部错误。
+fn probe_setup_outcome(
+    error: ProbeSetupError,
+    base_url: String,
+    checked_at: String,
+) -> Result<MineruTokenValidationView, AppError> {
+    match error {
+        ProbeSetupError::Dns(message) => Ok(MineruTokenValidationView {
+            ok: false,
+            status: "network_error",
+            summary: "翻译 API 连通性校验失败".to_string(),
+            retryable: true,
+            provider_code: None,
+            provider_message: Some(message),
+            operator_hint: None,
+            trace_id: None,
+            base_url,
+            checked_at,
+        }),
+        ProbeSetupError::Policy => Err(AppError::bad_request(
+            "provider endpoint resolves to a private/reserved address; private targets require explicit opt-in",
+        )),
+        ProbeSetupError::Build(message) => {
+            Err(AppError::internal(format!("build deepseek probe client failed: {message}")))
+        }
+    }
+}
+
+/// 余额路径的同类分类:余额查询保持视图语义,不抛 400。
+fn balance_setup_outcome(
+    error: ProbeSetupError,
+    base_url: String,
+    checked_at: String,
+) -> DeepSeekBalanceView {
+    let (status, retryable) = match &error {
+        ProbeSetupError::Dns(_) => ("network_error", true),
+        ProbeSetupError::Policy | ProbeSetupError::Build(_) => ("provider_error", false),
+    };
+    DeepSeekBalanceView {
+        ok: false,
+        status,
+        summary: "DeepSeek 余额查询失败".to_string(),
+        retryable,
+        is_available: false,
+        balance_infos: vec![],
+        provider_code: None,
+        provider_message: Some(match error {
+            ProbeSetupError::Dns(message) => message,
+            ProbeSetupError::Policy => {
+                "provider endpoint resolves to a private/reserved address".to_string()
+            }
+            ProbeSetupError::Build(message) => message,
+        }),
+        trace_id: None,
+        base_url,
+        checked_at,
     }
 }
 
@@ -266,7 +375,7 @@ async fn classify_deepseek_probe_response(
         .get("x-request-id")
         .and_then(|value| value.to_str().ok())
         .map(|value| value.to_string());
-    let body_text = response.text().await.unwrap_or_default();
+    let body_text = read_body_capped(response, PROBE_BODY_CAP).await.unwrap_or_default();
 
     if status_code.is_success() {
         return MineruTokenValidationView {
@@ -393,7 +502,7 @@ async fn classify_deepseek_balance_response(
         .get("x-request-id")
         .and_then(|value| value.to_str().ok())
         .map(|value| value.to_string());
-    let body_text = response.text().await.unwrap_or_default();
+    let body_text = read_body_capped(response, PROBE_BODY_CAP).await.unwrap_or_default();
 
     if status_code.is_success() {
         let parsed: Value = serde_json::from_str(&body_text).unwrap_or(Value::Null);

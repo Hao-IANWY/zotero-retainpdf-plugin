@@ -162,7 +162,9 @@ async fn repair_waiters_do_not_block_parse_and_cancelled_waiters_release_queue()
         let c = capacity.clone();
         tokio::spawn(async move { c.acquire(&c.repair).await })
     };
-    tokio::time::timeout(Duration::from_secs(1), async {
+    // 预算放宽到 30s:这里只等调度器把 waiter 跑到拿队列位,高负载机器
+    // 上 1s 会被环境性打穿;真正要验证的产能语义在下面的断言里。
+    tokio::time::timeout(Duration::from_secs(30), async {
         while capacity.queued.available_permits() != 0 {
             tokio::task::yield_now().await;
         }
@@ -197,7 +199,11 @@ async fn upload_waiting_for_repair_releases_parse_and_original_buffer() {
             parse_workers: 1,
             repair_workers: 1,
             queue_capacity: 1,
-            queue_wait_ms: 5000,
+            // 60s:坏上传要熬到 good 上传完成、测试放开 repair 位后拿到
+            // 许可,走「修复工具不可用」路径。5s 排队预算在高负载机器上会
+            // 先耗尽变成 QueueTimeout,断言出环境性假红。排队超时语义由
+            // repair_waiters 用例单独覆盖,不依赖这里的数值。
+            queue_wait_ms: 60_000,
             buffer_mib: 1,
         },
     );
@@ -215,7 +221,9 @@ async fn upload_waiting_for_repair_releases_parse_and_original_buffer() {
                 .await
         })
     };
-    tokio::time::timeout(Duration::from_secs(3), async {
+    // 同上:等 bad 上传走到 repair 排队(此时它必须已释放 parse/buffer),
+    // 3s 在全量并行测试的机器上不够,放宽但保持有界。
+    tokio::time::timeout(Duration::from_secs(30), async {
         while capacity.queued.available_permits() != 0 {
             tokio::task::yield_now().await;
         }

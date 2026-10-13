@@ -1,7 +1,7 @@
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::net::{IpAddr, SocketAddr};
+use std::net::SocketAddr;
 
 pub use retain_core::model_connection::{Deadlines, ModelConnection, Provider, Thinking};
 
@@ -176,44 +176,20 @@ impl ModelConnectionPolicy for ModelConnection {
     /// the policy check and reqwest's connection. No environment proxy is used.
     async fn addresses(&self, url: &url::Url) -> Result<Vec<SocketAddr>> {
         let host = url.host_str().unwrap_or("").trim_matches(['[', ']']);
-        let addresses: Vec<_> =
-            tokio::net::lookup_host((host, url.port_or_known_default().unwrap_or(443)))
-                .await
-                .map_err(|_| anyhow::anyhow!("endpoint DNS resolution failed"))?
-                .collect();
-        if addresses.is_empty()
-            || (!self.allow_private_endpoint && addresses.iter().any(|a| !public_ip(a.ip())))
+        match crate::services::net_policy::resolve_pinned_addresses(
+            host,
+            url.port_or_known_default().unwrap_or(443),
+            self.allow_private_endpoint,
+        )
+        .await
         {
-            bail!("private/reserved endpoint requires explicit opt-in");
+            Ok(addresses) => Ok(addresses),
+            Err(crate::services::net_policy::ResolveError::Dns(_)) => {
+                bail!("endpoint DNS resolution failed")
+            }
+            Err(crate::services::net_policy::ResolveError::Policy) => {
+                bail!("private/reserved endpoint requires explicit opt-in")
+            }
         }
-        Ok(addresses)
-    }
-}
-
-fn public_ip(ip: IpAddr) -> bool {
-    match ip {
-        IpAddr::V4(ip) => {
-            let [a, b, c, _] = ip.octets();
-            !(ip.is_private()
-                || ip.is_loopback()
-                || ip.is_link_local()
-                || ip.is_unspecified()
-                || ip.is_multicast()
-                || ip.is_broadcast()
-                || a == 0
-                || a >= 240
-                || (a == 100 && (64..=127).contains(&b))
-                || (a == 192 && b == 0)
-                || (a == 198 && (b == 18 || b == 19 || (b == 51 && c == 100)))
-                || (a == 203 && b == 0 && c == 113))
-        }
-        IpAddr::V6(ip) => ip
-            .to_ipv4_mapped()
-            .map(|v| public_ip(IpAddr::V4(v)))
-            .unwrap_or_else(|| {
-                let s = ip.segments();
-                // Only global unicast; exclude documentation space.
-                s[0] & 0xe000 == 0x2000 && !(s[0] == 0x2001 && s[1] == 0xdb8)
-            }),
     }
 }

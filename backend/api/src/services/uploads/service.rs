@@ -3,7 +3,10 @@ use std::sync::Arc;
 
 use super::capacity::{busy, UploadCapacity};
 use super::pdf::{load_pdf_page_count, repair_pdf_with_pymupdf};
-use super::staging::{prepare_upload, publish_upload, sanitize_upload_filename};
+use super::staging::{
+    prepare_staged_upload, prepare_upload, publish_upload, sanitize_upload_filename,
+    StagedUpload, StagedUploadWriter,
+};
 use super::UploadError;
 use crate::db::Db;
 use crate::models::domain::UploadRecord;
@@ -36,6 +39,10 @@ pub(crate) struct UploadService {
     inner: Arc<UploadServiceInner>,
 }
 
+/// 接入许可:覆盖「请求读取 → 暂存 → 排队 → 解析 → 发布」全过程,
+/// 由上传路由在读取任何文件字节之前取得。
+pub(crate) type Admission = tokio::sync::OwnedSemaphorePermit;
+
 impl UploadService {
     pub(crate) fn new(db: Arc<Db>, config: UploadServiceConfig) -> Self {
         let capacity = Arc::new(UploadCapacity::new(config.processing.clone()));
@@ -53,46 +60,105 @@ impl UploadService {
         self.inner.capacity.clone()
     }
 
+    /// 在读取任何文件字节之前取得接入许可。饱和即 503,让并发上传的
+    /// 读取阶段(而不只是解析阶段)受控。
+    pub(super) fn admit(&self) -> Result<Admission, UploadError> {
+        self.inner
+            .capacity
+            .admitted
+            .clone()
+            .try_acquire_owned()
+            .map_err(|_| busy())
+    }
+
+    /// 为一次上传建立暂存目录与流式写入器。扩展名与文件名先于任何落盘
+    /// 校验,非法输入零痕迹。
+    pub(super) async fn begin_stage(
+        &self,
+        filename: &str,
+    ) -> Result<StagedUploadWriter, UploadError> {
+        if !filename.to_lowercase().ends_with(".pdf") {
+            return Err(UploadError::bad_request("uploaded file must be a PDF"));
+        }
+        let safe_filename = sanitize_upload_filename(filename)?;
+        StagedUploadWriter::create(
+            &self.inner.config.uploads_dir,
+            &safe_filename,
+            filename.to_string(),
+        )
+        .await
+    }
+
+    /// 流式上传的交接:接管接入许可与暂存文件,排队解析、必要时修复、发布。
+    /// 许可与目录守卫贯穿整个后台流程,HTTP 调用方断开不影响容量归位。
+    pub(crate) async fn commit(
+        &self,
+        admission: Admission,
+        staged: StagedUpload,
+        developer_mode: bool,
+    ) -> Result<UploadRecord, UploadError> {
+        // 读取阶段已按同一上限拦截;这里兜底防绕过。
+        let max = effective_upload_max_bytes(self.inner.config.upload_max_bytes).get();
+        if staged.byte_count > max {
+            return Err(UploadError::payload_too_large("request body is too large"));
+        }
+        let byte_count = staged.byte_count;
+        self.run_worker(admission, byte_count, move || {
+            prepare_staged_upload(staged, developer_mode)
+        })
+        .await
+    }
+
+    /// 字节路径:任务创建(OCR 上传)仍以整份字节提交。读取侧的接入控制
+    /// 由调用方负责,这里只管解析资源预算。
     pub(crate) async fn store(
         &self,
         upload: UploadedPdfInput,
     ) -> Result<UploadRecord, UploadError> {
-        let uploads_dir = &self.inner.config.uploads_dir;
-        let python_bin = &self.inner.config.python_bin;
-        let upload_max_bytes = self.inner.config.upload_max_bytes;
-        let upload_max_pages = self.inner.config.upload_max_pages;
         if !upload.filename.to_lowercase().ends_with(".pdf") {
             return Err(UploadError::bad_request("uploaded file must be a PDF"));
         }
+        let upload_max_bytes = effective_upload_max_bytes(self.inner.config.upload_max_bytes).get();
         let byte_count = upload.bytes.len() as u64;
-        if byte_count > effective_upload_max_bytes(upload_max_bytes).get() {
+        if byte_count > upload_max_bytes {
             return Err(UploadError::payload_too_large("request body is too large"));
         }
         let safe_filename = sanitize_upload_filename(&upload.filename)?;
+        let admission = self.admit()?;
+        let uploads_dir = self.inner.config.uploads_dir.clone();
+        self.run_worker(admission, byte_count, move || {
+            prepare_upload(&uploads_dir, upload, safe_filename, byte_count)
+        })
+        .await
+    }
+
+    /// 解析→修复→发布的共享流程。`prepare` 在解析许可与缓冲预算就位后
+    /// 于阻塞线程执行,产出待发布(或待修复)的上传。
+    async fn run_worker(
+        &self,
+        admission: Admission,
+        byte_count: u64,
+        prepare: impl FnOnce() -> Result<super::staging::PreparedUpload, UploadError> + Send + 'static,
+    ) -> Result<UploadRecord, UploadError> {
+        let upload_max_pages = self.inner.config.upload_max_pages;
         let capacity = self.inner.capacity.clone();
-        let admitted = capacity
-            .admitted
-            .clone()
-            .try_acquire_owned()
-            .map_err(|_| busy())?;
         let buffer = capacity.reserve_buffer(byte_count)?;
         let permit = capacity.acquire(&capacity.parse).await?;
         let db = self.inner.db.clone();
-        let uploads_dir = uploads_dir.to_path_buf();
-        let python_bin = python_bin.to_string();
+        let python_bin = self.inner.config.python_bin.to_string();
         // The admitted worker owns the permit and directory even if the HTTP
         // caller disconnects. Never release capacity while a parser is still alive.
         tokio::spawn(async move {
-            let _admitted = admitted;
+            let _admission = admission;
             let prepared = tokio::task::spawn_blocking(move || {
                 let _permit = permit;
                 let _buffer = buffer;
-                prepare_upload(&uploads_dir, upload, safe_filename, byte_count)
+                prepare()
             })
             .await
             .map_err(|_| UploadError::internal("PDF upload worker failed"))??;
             let prepared = if prepared.page_count.is_none() {
-                // No parsing permit or original Vec is held while waiting for repair.
+                // No parsing permit or original file is held while waiting for repair.
                 let repair = match capacity.acquire(&capacity.repair).await {
                     Ok(permit) => permit,
                     Err(error) => {

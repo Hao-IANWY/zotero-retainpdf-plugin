@@ -1,7 +1,12 @@
-use super::{UploadService, UploadedPdfInput};
+use std::num::NonZeroU64;
+
+use axum::extract::multipart::Field;
+
+use super::{Admission, StagedUpload, UploadService, UploadedPdfInput};
 use crate::error::AppError;
 use crate::models::api::{upload_to_response, UploadView};
 use crate::models::domain::UploadRecord;
+use crate::routes::common::safe_multipart_error;
 
 pub(crate) struct UploadApiDeps<'a> {
     uploads: &'a UploadService,
@@ -29,12 +34,55 @@ pub(crate) async fn store_upload(
         .map_err(AppError::from)
 }
 
-pub(crate) async fn store_upload_view(
+/// 在读取任何文件字节之前取得上传接入许可(读取/暂存/排队/解析全程持有)。
+pub(crate) fn admit_upload(deps: &UploadApiDeps<'_>) -> Result<Admission, AppError> {
+    deps.uploads.admit().map_err(AppError::from)
+}
+
+/// 把一个 multipart 文件字段分块写入受控暂存目录。字节按实际收到量
+/// 累计检查上限;超限/断开由暂存守卫随 drop 清理,内存不攒整份文件。
+pub(crate) async fn stage_upload_field(
     deps: &UploadApiDeps<'_>,
-    filename: String,
-    bytes: Vec<u8>,
+    mut field: Field<'_>,
+    max_bytes: NonZeroU64,
+) -> Result<StagedUpload, AppError> {
+    let filename = field
+        .file_name()
+        .map(str::to_string)
+        .unwrap_or_else(|| "upload.pdf".to_string());
+    let mut writer = deps
+        .uploads
+        .begin_stage(&filename)
+        .await
+        .map_err(AppError::from)?;
+    while let Some(chunk) = field.chunk().await.map_err(safe_multipart_error)? {
+        writer
+            .write_chunk(&chunk, max_bytes.get())
+            .await
+            .map_err(AppError::from)?;
+    }
+    writer.finish().await.map_err(AppError::from)
+}
+
+/// 流式上传的发布:接管接入许可与暂存文件,完成解析→修复→入库。
+pub(crate) async fn commit_upload(
+    deps: &UploadApiDeps<'_>,
+    admission: Admission,
+    staged: StagedUpload,
+    developer_mode: bool,
+) -> Result<UploadRecord, AppError> {
+    deps.uploads
+        .commit(admission, staged, developer_mode)
+        .await
+        .map_err(AppError::from)
+}
+
+pub(crate) async fn commit_upload_view(
+    deps: &UploadApiDeps<'_>,
+    admission: Admission,
+    staged: StagedUpload,
     developer_mode: bool,
 ) -> Result<UploadView, AppError> {
-    let upload = store_upload(deps, filename, bytes, developer_mode).await?;
+    let upload = commit_upload(deps, admission, staged, developer_mode).await?;
     Ok(upload_to_response(&upload))
 }
