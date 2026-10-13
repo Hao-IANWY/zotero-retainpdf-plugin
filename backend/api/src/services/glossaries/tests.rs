@@ -20,6 +20,7 @@ fn test_state() -> AppState {
     let state = assemble_app_state(Arc::new(AppConfig {
         python_bin: "python".to_string(),
         simple_port: 41001,
+        allowed_origins: Vec::new(),
         api_keys: HashSet::new(),
         ..dirs.config()
     }));

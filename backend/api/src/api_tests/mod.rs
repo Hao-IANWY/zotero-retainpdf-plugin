@@ -22,6 +22,7 @@ mod library_data;
 mod live_translation;
 mod model_requests;
 mod ocr_lifecycle;
+mod origin_gate;
 mod providers;
 mod translation_debug;
 mod uploads;

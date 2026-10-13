@@ -187,6 +187,7 @@ pub(super) mod tests {
             bind_host: "127.0.0.1".to_string(),
             port: 41000,
             simple_port: 41001,
+            allowed_origins: Vec::new(),
             upload_max_bytes: 0,
             upload_max_pages: 0,
             upload_processing: Default::default(),

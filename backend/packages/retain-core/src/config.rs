@@ -110,6 +110,8 @@ pub struct AppConfig {
     pub bind_host: String,
     pub port: u16,
     pub simple_port: u16,
+    /// 受信浏览器 Origin 白名单。语义见 `config::server::ServerRuntimeConfig`。
+    pub allowed_origins: Vec<String>,
     pub upload_max_bytes: u64,
     pub upload_max_pages: u32,
     pub upload_processing: UploadProcessingConfig,
@@ -277,6 +279,7 @@ impl AppConfig {
             bind_host: server.bind_host,
             port: server.port,
             simple_port: auth.simple_port,
+            allowed_origins: server.allowed_origins,
             upload_max_bytes: upload.upload_max_bytes,
             upload_max_pages: upload.upload_max_pages,
             // Processing overrides also apply to desktop; snapshot once at startup.
