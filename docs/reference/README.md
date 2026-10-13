@@ -8,6 +8,7 @@
 - [LLM Provider](./LLM_api/README.md)
 - [字体与排版密度](./font-scaling/README.md)
 - [图标设计与交付物](./icon-design/ICON_BRIEF.md)
+- [experiments/ 退役档案](./experiments-archive.md)
 
 ## 读法
 

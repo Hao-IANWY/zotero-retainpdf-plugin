@@ -42,12 +42,6 @@ DEFAULT_EXCLUDED_PATHS = {
     ("PDF_MD_lib",),
     ("data", "jobs"),
     ("backend", "data", "jobs"),
-    ("experiments", "render-chunk-size-benchmark"),
-    ("experiments", "render-combined-prewarm"),
-    ("experiments", "render-benchmark-533", "case-data"),
-    ("experiments", "layout-fit", "fixtures", "jobs"),
-    ("experiments", "layout-fit", "fixtures", "pdf-pages"),
-    ("experiments", "layout-fit", "fixtures", "source-pdfs"),
 }
 
 ALWAYS_EXCLUDED_DIRS = {".git"}
