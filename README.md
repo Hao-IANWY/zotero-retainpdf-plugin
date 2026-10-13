@@ -62,19 +62,38 @@ SCI 论文、图片型 / 扫描版 PDF 与图书教材的原文—译文对照�
 ### Docker 部署
 
 ```bash
-git clone https://github.com/wxyhgk/retain-pdf.git
+git clone https://github.com/Hao-IANWY/zotero-retainpdf-plugin.git
 cd retain-pdf/ops/deployment/docker/delivery
 docker compose up -d
 ```
 
-启动后访问 <http://127.0.0.1:40001> 查看任务状态。更新服务：
+启动后访问 <http://127.0.0.1:40001> 查看任务状态。
+
+> 上面直接 `up` 拉的是上游预构建镜像，**不包含本仓库的最新功能**（SSE 进度流、
+> 客户端上报等）。要用完整能力请从源码构建自己的镜像：
 
 ```bash
-docker compose pull
-docker compose up -d
+cd <仓库根目录>
+docker build --build-arg TYPST_VERSION=0.15.1 \
+  -f ops/deployment/docker/backend/Dockerfile.app -t retainpdf-app:local .
+docker build --build-arg RETAIN_PDF_VERSION=local \
+  -f ops/deployment/docker/Dockerfile.web -t retainpdf-web:local .
+cd ops/deployment/docker/delivery
+APP_IMAGE=retainpdf-app:local WEB_IMAGE=retainpdf-web:local docker compose up -d
 ```
 
-更多配置见 [Docker 部署说明](ops/deployment/docker/delivery/README.md)。
+首次构建约 10–20 分钟（270 个 Rust crate），之后有分层缓存、秒级增量。
+若数据目录属主与容器默认用户（uid 1000）不一致，构建时加
+`--build-arg RETAINPDF_UID=<你的uid> --build-arg RETAINPDF_GID=<你的gid>`。
+
+更新服务（用自己镜像时重建即更新）：
+
+```bash
+git pull
+# 重新执行上面的 build 与 compose up -d
+```
+
+更多配置（端口、密钥、反代）见 [Docker 部署说明](ops/deployment/docker/delivery/README.md)。
 
 ### Zotero 插件安装
 

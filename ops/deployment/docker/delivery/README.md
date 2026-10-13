@@ -74,7 +74,7 @@ docker compose version
 ## 3. 拉取 GitHub 项目
 
 ```bash
-git clone https://github.com/wxyhgk/retain-pdf.git
+git clone https://github.com/Hao-IANWY/zotero-retainpdf-plugin.git
 cd retain-pdf/ops/deployment/docker/delivery
 ```
 
