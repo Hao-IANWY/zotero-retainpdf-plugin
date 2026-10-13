@@ -120,7 +120,8 @@ def test_candidate_pruning_is_best_effort_and_outlives_artifact_retention():
     assert "    continue-on-error: true\n" in prune
     assert "--max-age-days 10" in prune
     assert '--keep "candidate-${GITHUB_SHA}"' in prune
-    # 只有它和 docker 构建需要 Docker Hub 凭据。
+    # prune 仍清 Docker Hub 候选标签需要凭据；docker 构建已改推 GHCR（用内置
+    # GITHUB_TOKEN），caller 透传的 DOCKERHUB secrets 仅为 release-docker 兼容保留。
     for name, body in jobs(PREBUILD).items():
         if name not in {"docker", "prune-docker-candidates"}:
             assert "secrets." not in body, name
@@ -295,7 +296,9 @@ def test_actions_read_is_only_granted_where_runs_or_artifacts_are_queried():
 
 
 def test_no_new_secrets_are_introduced():
-    allowed = {"DOCKERHUB_USERNAME", "DOCKERHUB_TOKEN"}
+    # GITHUB_TOKEN 是 Actions 内置 token，不算新引入的仓库 secret
+    #（本仓库 GHCR 推送就靠它的 packages:write）。
+    allowed = {"DOCKERHUB_USERNAME", "DOCKERHUB_TOKEN", "GITHUB_TOKEN"}
     for workflow_name in RELEASE_WORKFLOWS:
         used = set(re.findall(r"secrets\.(\w+)", workflow(workflow_name)))
         assert used <= allowed, (workflow_name, used - allowed)

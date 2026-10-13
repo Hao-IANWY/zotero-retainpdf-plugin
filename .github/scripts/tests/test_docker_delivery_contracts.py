@@ -383,7 +383,7 @@ def test_release_docker_never_exports_gha_caches():
 
 
 def test_release_docker_registry_cache_is_shared_across_tags_but_written_only_when_logged_in():
-    """registry 缓存跨 tag 可读；只有会推送（已登录 Docker Hub）的路径才写。
+    """registry 缓存跨 tag 可读；只有会推送（已登录 registry，本仓库为 GHCR）的路径才写。
 
     PR / push=false 的 dispatch 没有登录，写缓存会失败；每个平台一个 ref，
     amd64 / arm64 两个 job 并行写才不会互相覆盖。
@@ -402,7 +402,7 @@ def test_release_docker_registry_cache_is_shared_across_tags_but_written_only_wh
     assert 'echo "to=" >> "$GITHUB_OUTPUT"' in read_only_branch
 
     # 写缓存的条件必须与登录条件是同一个开关。
-    login = _indented_section(build, "      - name: Login to Docker Hub\n", "      - name: Generate build args\n")
+    login = _indented_section(build, "      - name: Login to GHCR\n", "      - name: Generate build args\n")
     assert "if: inputs.push" in login
     # 缓存 ref 用到的 namespace / slug 要在缓存步骤之前解析好。
     assert build.index("id: hub") < build.index("id: cache")
