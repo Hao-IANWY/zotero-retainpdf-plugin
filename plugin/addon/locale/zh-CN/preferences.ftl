@@ -31,4 +31,4 @@ pref-models-need-key = 请先填写接口地址与密钥
 pref-workers = 并发数
 pref-show-key = 显示密钥
 pref-hide-key = 隐藏密钥
-pref-help = { $name } Build { $version } { $time }
+pref-help = { $name } v{ $version }
