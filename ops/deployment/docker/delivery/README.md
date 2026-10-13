@@ -75,7 +75,7 @@ docker compose version
 
 ```bash
 git clone https://github.com/Hao-IANWY/zotero-retainpdf-plugin.git
-cd retain-pdf/ops/deployment/docker/delivery
+cd zotero-retainpdf-plugin/ops/deployment/docker/delivery
 ```
 
 ## 4. 启动服务

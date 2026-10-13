@@ -63,7 +63,7 @@ SCI 论文、图片型 / 扫描版 PDF 与图书教材的原文—译文对照�
 
 ```bash
 git clone https://github.com/Hao-IANWY/zotero-retainpdf-plugin.git
-cd retain-pdf/ops/deployment/docker/delivery
+cd zotero-retainpdf-plugin/ops/deployment/docker/delivery
 docker compose up -d
 ```
 
