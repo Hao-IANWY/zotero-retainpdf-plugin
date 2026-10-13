@@ -106,14 +106,6 @@ Zotero 7+ 中打开 `工具 → 插件 → 齿轮菜单 → Install Plugin From 
 [最新版 xpi](https://github.com/Hao-IANWY/zotero-retainpdf-plugin/releases/latest/download/retain-pdf.xpi)。
 装好后先到设置里填服务地址与凭据（或改用[插件目录](plugin/)自行构建）。
 
-## 交流
-
-QQ 交流群：`1101779791`
-
-<p align="center">
-  <img src="resources/brand/QQ_Group.JPG" alt="RetainPDF QQ 交流群二维码" width="280" />
-</p>
-
 ## 开发
 
 参阅 [贡献指南](CONTRIBUTING.md)、[项目文档](docs/README.md)和[后端说明](backend/README.md)。
