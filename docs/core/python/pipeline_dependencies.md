@@ -21,7 +21,7 @@ Regenerate with:
 ## External Commands
 
 - `typst`
-  refs: `devtools/analyze_render_item_composition.py`, `devtools/architecture_checks/rendering.py`, `devtools/architecture_checks/translation_field_writers.py`, `devtools/architecture_checks/translation_source_readers.py`, `devtools/backfill_typography_memory.py`, `devtools/benchmark_source_cleanup.py`
+  refs: `devtools/architecture_checks/rendering.py`, `devtools/architecture_checks/translation_field_writers.py`, `devtools/architecture_checks/translation_source_readers.py`, `devtools/golden_harness.py`, `devtools/job_debug_runner.py`, `devtools/replay_translation_item.py`
 - `gs`
   refs: `retainpdf_pipeline/render/source/compression/ghostscript.py`, `retainpdf_pipeline/render/source/preparation/hidden_text_strip.py`
 

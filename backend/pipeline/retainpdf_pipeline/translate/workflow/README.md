@@ -22,8 +22,8 @@
   一个 phase 可以调用 policy、continuation、LLM 或 repair 服务，但事件格式和落盘细节要收窄。
 
 - `scheduling/`
-  后续承接队列分配、批次 worker、结果 drain、tail retry 和 flush 策略。
-  这些逻辑目前分散在 `batch_runner.py`、`workers.py` 和 `batching/pending_units.py`。
+  队列分配、worker pool 布局、结果 drain、tail retry 和调度指标等纯逻辑；
+  主循环留在 `batch_runner.py`，批次输入留在 `batching/pending_units.py`。
 
 - `legacy/`
   后续承接旧的逐页翻译兼容路径。

@@ -146,7 +146,8 @@ RETAINPDF_PIPELINE_ONLY_PYTHON=/path/to/isolated/venv/bin/python \
   provider / translate / render 共用的阶段协议、summary 和 JSON IO。
   `retainpdf_pipeline/services/` 下只有它仍有实体文件，其余子目录是搬家空壳。
 - `retainpdf_pipeline/translate`
-  OCR payload 到翻译 JSON（含 `translation_stage.py` 阶段门面）。
+  OCR payload 到翻译 JSON（含 `translation_stage.py` 阶段门面）；可编辑提示词模板在
+  `translate/prompts/`，由 `translate/prompt_loader.py` 加载。
 - `retainpdf_pipeline/render`
   翻译 JSON 到 PDF（含 `render_stage.py`、`translation_loader.py`、`render_inputs.py` 阶段门面）。
 - `retainpdf_pipeline/document_operations`
@@ -162,9 +163,7 @@ RETAINPDF_PIPELINE_ONLY_PYTHON=/path/to/isolated/venv/bin/python \
 - `retainpdf_pipeline/foundation/config`
   路径、字体、版式和运行时默认配置。
 - `retainpdf_pipeline/foundation/shared`
-  输入解析、job 目录、环境变量、提示词加载等共享能力。
-- `retainpdf_pipeline/foundation/prompts`
-  可编辑提示词模板。
+  输入解析、job 目录、环境变量等共享能力。
 - `devtools/experiments`
   实验性流程，不属于稳定主链路。
 - `devtools/tests`

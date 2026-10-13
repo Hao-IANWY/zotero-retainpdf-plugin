@@ -104,7 +104,6 @@
   - `shared/orchestration/plain_text_validation.py`
   - `shared/orchestration/sentence_level.py`
   - `shared/orchestration/transport.py`
-  - `shared/orchestration/keep_origin.py`
   - `shared/orchestration/metadata.py`
   - `shared/orchestration/common.py`
   - `shared/orchestration/segment_routing.py`

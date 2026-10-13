@@ -4,8 +4,6 @@ pub mod api;
 mod common;
 #[path = "models/defaults.rs"]
 pub mod defaults;
-#[path = "models/document_operation.rs"]
-mod document_operation;
 #[path = "models/domain.rs"]
 pub mod domain;
 #[path = "models/glossary.rs"]
@@ -30,12 +28,6 @@ mod view;
 pub use common::{
     build_job_id, now_iso, ApiResponse, JobStatusKind, UploadRecord, UploadView, WorkflowKind,
     LOG_TAIL_LIMIT,
-};
-pub use document_operation::{
-    validate_operation_id, DocumentOperationDispatchReceipt, DocumentOperationLimits,
-    DocumentOperationStatus, DocumentOperationWorkspaceManifest, DocumentOperationWorkspaceState,
-    DOCUMENT_OPERATION_MANIFEST_SCHEMA, DOCUMENT_OPERATION_SCHEMA_VERSION,
-    DOCUMENT_OPERATION_STATE_SCHEMA,
 };
 pub use glossary::{
     build_glossary_id, glossary_to_csv_export, glossary_to_detail, glossary_to_summary,

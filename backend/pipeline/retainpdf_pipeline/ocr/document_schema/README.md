@@ -282,8 +282,9 @@ provider 装配层位于：
   已经接入通用 builder，但还没有像 Paddle 一样完全目录化
 - `generic_flat_ocr_adapter.py`
   目前仍是最薄的一层 passthrough adapter
-- `mineru`
-  主线仍在 `ocr/mineru_provider/document_v1.py`，当前不在这轮通用化范围内
+- `mineru/`
+  主线已搬到 `provider_adapters/mineru/adapter.py`（跨页、标签、关系等在同目录子模块，
+  详见其 `NORMALIZATION.md`），当前仍未接入 `common/` builder
 
 也就是说，后续扩展 OCR provider 时，优先目标不是继续堆“大 adapter 文件”，而是：
 

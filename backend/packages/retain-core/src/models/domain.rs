@@ -1,10 +1,4 @@
 pub use super::common::{build_job_id, now_iso, JobStatusKind, UploadRecord, WorkflowKind};
-pub use super::document_operation::{
-    validate_operation_id, DocumentOperationDispatchReceipt, DocumentOperationLimits,
-    DocumentOperationStatus, DocumentOperationWorkspaceManifest, DocumentOperationWorkspaceState,
-    DOCUMENT_OPERATION_MANIFEST_SCHEMA, DOCUMENT_OPERATION_SCHEMA_VERSION,
-    DOCUMENT_OPERATION_STATE_SCHEMA,
-};
 pub use super::glossary::{build_glossary_id, GlossaryRecord};
 pub use super::input::{
     CreateJobInput, ResolvedJobSpec, DEFAULT_SOURCE_CLEANUP_STRATEGY, SOURCE_CLEANUP_STRATEGIES,

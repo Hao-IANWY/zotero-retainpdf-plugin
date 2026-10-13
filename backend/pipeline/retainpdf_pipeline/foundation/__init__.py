@@ -1,5 +1,5 @@
 """Shared foundation packages.
 
-Contains config, shared helpers, and prompt assets used by runtime modules.
+Contains config and shared helpers used by runtime modules.
 """
 

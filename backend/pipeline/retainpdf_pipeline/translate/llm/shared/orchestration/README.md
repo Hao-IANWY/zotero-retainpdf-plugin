@@ -130,10 +130,6 @@
   - provider、transport、validation、chunk/window 失败统一使用 `failed`
   - `failed` 默认带 `fallback_to=retry_required`，让导出门禁拦住半成品
 
-- `keep_origin.py`
-  keep-origin 兼容入口。
-  新增失败终态时优先使用 `terminal_payloads.py`，不要再把失败写成 keep-origin。
-
 - `metadata.py`
   translation_diagnostics / formula diagnostics / runtime term restore。
 

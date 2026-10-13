@@ -43,7 +43,6 @@ TRANSLATION_WORKFLOW_ALLOWED_DIRS = {
 TRANSLATION_WORKFLOW_ALLOWED_FILES = {
     "__init__.py",
     "README.md",
-    "batch_plan.py",
     "batch_runner.py",
     "book_flow.py",
     "execution.py",
@@ -55,7 +54,6 @@ TRANSLATION_WORKFLOW_ALLOWED_FILES = {
     "recovery.py",
     "stages.py",
     "translation_workflow.py",
-    "workers.py",
 }
 TRANSLATION_WORKFLOW_SUBPACKAGE_RULES: dict[str, tuple[str, ...]] = {
     "checkpoint": (
@@ -121,20 +119,10 @@ TRANSLATION_WORKFLOW_PRIVATE_IMPORT_EXCEPTIONS: dict[Path, tuple[str, ...]] = {
     Path("workflow/stages.py"): (
         "retainpdf_pipeline.translate.workflow.phases.repair._agent_repair_limit_from_env",
     ),
-    Path("workflow/workers.py"): (
-        "retainpdf_pipeline.translate.workflow.scheduling.allocation._",
-    ),
-    Path("workflow/batch_plan.py"): (
-        "retainpdf_pipeline.translate.workflow.scheduling.allocation._",
-    ),
     Path("workflow/batch_runner.py"): (
         "retainpdf_pipeline.translate.workflow.batching.executor._translate_batch_or_keep_origin",
         "retainpdf_pipeline.translate.workflow.scheduling.failures._failed_results_for_unhandled_batch_exception",
         "retainpdf_pipeline.translate.workflow.scheduling.tail_retry._",
-    ),
-    Path("workflow/batch_plan.py"): (
-        "retainpdf_pipeline.translate.workflow.batching.plan._",
-        "retainpdf_pipeline.translate.workflow.scheduling.allocation._",
     ),
     Path("workflow/execution_plan.py"): (
         "retainpdf_pipeline.translate.workflow.scheduling.allocation._adaptive_floor_limit",

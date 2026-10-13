@@ -45,7 +45,6 @@ RENDERING_ALLOWED_ROOT_DIRS = {
 RENDERING_ALLOWED_ROOT_FILES = {
     "__init__.py",
     "__main__.py",
-    "performance.py",
     "README.md",
     "render_stage.py",
     "render_plan.py",

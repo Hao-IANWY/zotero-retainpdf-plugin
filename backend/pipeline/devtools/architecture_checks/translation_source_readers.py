@@ -78,7 +78,6 @@ SOURCE_TEXT_READER_ALLOWLIST: dict[str, int] = {
     "retainpdf_pipeline/translate/core/payload/parts/units.py": 2,
     "retainpdf_pipeline/translate/core/payload/template_sync.py": 5,
     "retainpdf_pipeline/translate/core/text_rules.py": 1,
-    "retainpdf_pipeline/translate/llm/decision_hints.py": 2,
     "retainpdf_pipeline/translate/llm/shared/cache.py": 3,
     "retainpdf_pipeline/translate/llm/shared/orchestration/common.py": 11,
     "retainpdf_pipeline/translate/llm/shared/orchestration/direct_typst_long_text.py": 4,

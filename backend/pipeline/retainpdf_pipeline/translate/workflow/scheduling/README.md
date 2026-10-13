@@ -11,8 +11,6 @@
 
 它不应该决定某个 block 是否翻译，不应该构造 prompt，也不应该实现 provider HTTP 调用。
 
-后续需要迁移的当前源文件：
-
-- `workflow/batch_runner.py`
-- `workflow/workers.py`
-- `workflow/batching/pending_units.py` 里和调度相关的部分
+调度实现已收口在本目录（`allocation.py`、`pool_specs.py`、`tail_retry.py`、
+`metrics.py` 等）；消费方是 `workflow/batch_runner.py`，批次输入来自
+`workflow/batching/pending_units.py` 里和调度相关的部分。

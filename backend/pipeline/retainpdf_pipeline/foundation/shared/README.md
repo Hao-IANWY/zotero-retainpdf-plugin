@@ -14,8 +14,8 @@
   负责解析和校验标准 job 目录契约：`source/ocr/translated/rendered/artifacts/logs`。
 - `local_env.py`
   负责从显式参数、环境变量或 `scripts/.env/` 中读取密钥。
-- `prompt_loader.py`
-  负责从 `scripts/foundation/prompts/` 加载可编辑提示词模板。
+- `prompt_loader.py`（已迁至 `translate/prompt_loader.py`）
+  负责从 `translate/prompts/` 加载可编辑提示词模板。
 - `job_cleanup.py`
   负责输出目录清理相关逻辑。
 - `stage_specs.py`
@@ -27,7 +27,7 @@
 
 - Stage worker / 编排层用它解析 spec、凭证引用和标准任务目录
 - OCR provider 实现层用它读取 token、环境配置和输出路径
-- 翻译层用它加载提示词和默认配置
+- 翻译层用它加载默认配置（提示词加载已迁到 `translate/prompt_loader.py`）
 - 渲染层用它读取字体、压缩和版式参数
 - Rust/Python 编排层用它解析 `job_root/specs/*.spec.json`
 
