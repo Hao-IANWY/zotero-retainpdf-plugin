@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import ExitStack, closing
 from concurrent.futures import as_completed
 from pathlib import Path
 import shutil
@@ -536,28 +537,29 @@ def build_single_page_typst_pdf(
         start_page=page_idx,
         end_page=page_idx,
     )
-    source_doc = fitz.open(source_pdf_path)
-    temp_doc = fitz.open(temp_source_path)
-    copy_toc(source_doc, temp_doc, start_page=page_idx, end_page=page_idx)
-    page = temp_doc[0]
-    strip_page_links(page)
-    overlay_translated_items_on_page(
-        page,
-        prepared_items,
-        stem=f"page-{page_idx + 1}",
-        api_key=api_key,
-        model=model,
-        base_url=base_url,
-        font_family=font_family,
-        font_paths=font_paths,
-        temp_root=resolve_typst_temp_root(output_pdf_path, temp_root),
-        cover_only=cover_only,
-        redaction_strategy=redaction_strategy,
-        request_chat_content_fn=request_chat_content_fn,
-    )
-    save_optimized_pdf(temp_doc, output_pdf_path)
-    temp_doc.close()
-    source_doc.close()
+    # 覆盖层渲染抛错(排版失败/修复失败)时两份文档也必须显式关闭,
+    # 否则 PyMuPDF 的底层资源要等 GC 才释放,长批次渲染会累积句柄。
+    with ExitStack() as stack:
+        source_doc = stack.enter_context(closing(fitz.open(source_pdf_path)))
+        temp_doc = stack.enter_context(closing(fitz.open(temp_source_path)))
+        copy_toc(source_doc, temp_doc, start_page=page_idx, end_page=page_idx)
+        page = temp_doc[0]
+        strip_page_links(page)
+        overlay_translated_items_on_page(
+            page,
+            prepared_items,
+            stem=f"page-{page_idx + 1}",
+            api_key=api_key,
+            model=model,
+            base_url=base_url,
+            font_family=font_family,
+            font_paths=font_paths,
+            temp_root=resolve_typst_temp_root(output_pdf_path, temp_root),
+            cover_only=cover_only,
+            redaction_strategy=redaction_strategy,
+            request_chat_content_fn=request_chat_content_fn,
+        )
+        save_optimized_pdf(temp_doc, output_pdf_path)
 
 
 def build_book_typst_pdf(
