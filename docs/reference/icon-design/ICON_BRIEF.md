@@ -24,25 +24,17 @@
 
 | 项 | 要求 |
 |----|------|
-| 格式 | **Lottie JSON**（优先，项目已有 lottie-web）或 **APNG / 短循环 WebM** |
+| 格式 | **Lottie JSON**（优先；当前前端未接 lottie-web，接入需新增依赖）或 **APNG / 短循环 WebM** |
 | 时长 | 循环 **1–2s**；处理中类可更长 |
 | 尺寸 | 导出逻辑 **64×64 或 128×128**，透明底 |
 | 命名 | `anim-<用途>.json`，如 `anim-processing.json` |
 | 注意 | 避免过重粒子；状态卡里会很小显示 |
 
-### 1.3 已有动效（可换代，不必重做清单外的）
+### 1.3 已有动效（现状：已退役）
 
-现有 Lottie 在 `frontend/src/assets/animations/`：
-
-| 文件 | 用途（管线阶段） |
-|------|------------------|
-| `pdf_upload_Lottie.json` | 上传 |
-| `ocr_Lottie.json` | OCR |
-| `deepseek_lottie.json` | 翻译（模型） |
-| `typst_rendering.json` | 排版 / 渲染 |
-| `pdf_download_Lottie.json` | 下载 / 产出 |
-
-若你要「更好看的动效」，优先换这 5 个 + 下文 **P0 动态** 即可。
+此前的 5 个阶段 Lottie（上传 / OCR / 翻译 / 排版 / 下载，原在 `resources/animations/`）
+已随资产清理退役删除，前端也不再接入 lottie-web。没有现成动效可换代，
+需要动效时按下文 **§6 动态清单** 从零交付即可。
 
 ---
 
@@ -162,11 +154,11 @@
 | 文件名 | 场景 | 说明 |
 |--------|------|------|
 | `anim-processing.json` | 卡片处理中 / 状态卡 | 温和旋转或进度环，可循环 |
-| `anim-upload.json` | 上传中 | 可替换 `pdf_upload_Lottie.json` |
-| `anim-ocr.json` | OCR 阶段 | 可替换 `ocr_Lottie.json` |
-| `anim-translate.json` | 翻译阶段 | 可替换 `deepseek_lottie.json` |
-| `anim-render.json` | 排版阶段 | 可替换 `typst_rendering.json` |
-| `anim-download.json` | 下载完成/进行 | 可替换 `pdf_download_Lottie.json` |
+| `anim-upload.json` | 上传中 | 新建，无旧资产 |
+| `anim-ocr.json` | OCR 阶段 | 新建，无旧资产 |
+| `anim-translate.json` | 翻译阶段 | 新建，无旧资产 |
+| `anim-render.json` | 排版阶段 | 新建，无旧资产 |
+| `anim-download.json` | 下载完成/进行 | 新建，无旧资产 |
 | `anim-empty-favorites.json`（可选） | 收藏空态 | 书签轻动，不要吵 |
 
 ---
@@ -200,7 +192,7 @@ docs/reference/icon-design/
     preview/             ← 可选：拼一张总览 PNG/PDF 方便评审
 ```
 
-做完后告诉我文件已就位，我可以按文件名接到 `frontend/src/assets/icons/` 并替换代码里的 Lucide / 内联 SVG。
+做完后告诉我文件已就位，我可以按文件名接到 `frontend/web/src/assets/icons/` 并替换代码里的 Lucide / 内联 SVG。
 
 ---
 
@@ -229,7 +221,7 @@ docs/reference/icon-design/
 
 - 阅读器：大量 `lucide-react`（ModeTabs / Fab / Close / Selection）。  
 - 主页：大量内联 `<svg>`（TopTabs / BottomBar / Badge / Toolbar）。  
-- 品牌：`frontend/src/assets/RetainPDF-logo.svg`（Logo 另算，不在本清单强制范围）。  
-- 阶段动效：Lottie 见 §1.3。
+- 品牌：`frontend/web/src/assets/RetainPDF-logo.svg`（Logo 另算，不在本清单强制范围）。  
+- 阶段动效：旧 Lottie 资产已退役，见 §1.3。
 
 有问题可以直接在 `deliverables/` 旁加 `notes.md` 写你的命名或变体说明。
