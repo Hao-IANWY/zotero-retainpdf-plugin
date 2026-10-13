@@ -114,9 +114,9 @@ Content-Type: application/json
 - 这里的 `workflow: "book"` 才是当前完整主链路的正式协议值
 - OCR provider 选择看 `ocr.provider`，而不是看 `workflow`
 - 如果你只想跑 OCR-only，请走 `POST /api/v1/ocr/jobs`，不要向 `/api/v1/jobs` 传 `workflow="ocr"`
-- 本地人工一次性调试时可以使用 legacy wrapper `retainpdf-pipeline provider-case`（`run_provider_case.py` script-mode，仅桌面兼容）；生产 API 主链由 Rust job_runner 编排
+- 本地人工一次性调试时可以使用 `retainpdf-pipeline provider-case`；生产 API 主链由 Rust job_runner 编排
 - 如果输入已经是 OCR JSON + PDF，优先使用 `run_document_flow.py`（script-mode，仅桌面兼容，无 console 等价物）
-- 如果只想跑 OCR-only，优先使用 `retainpdf-pipeline provider-ocr --spec <job_root>/specs/provider.spec.json`（`run_provider_ocr.py` 仅桌面兼容）
+- 如果只想跑 OCR-only，优先使用 `retainpdf-pipeline provider-ocr --spec <job_root>/specs/provider.spec.json`
 
 ### 4.1 DeepSeek 示例
 

@@ -27,11 +27,6 @@ ENTRYPOINT_IMPORT_ALLOWLIST: dict[Path, tuple[str, ...]] = {
     Path("diagnose_failure_with_ai.py"): (
         "from retainpdf_pipeline.translate.public import",
     ),
-    Path("run_normalize_ocr.py"): ("from retainpdf_pipeline.ocr.document_schema.normalize_pipeline import main",),
-    Path("run_provider_case.py"): ("from retainpdf_pipeline.ocr.ocr_provider.provider_pipeline import main",),
-    Path("run_provider_ocr.py"): ("from retainpdf_pipeline.ocr.ocr_provider.provider_pipeline import main",),
-    Path("run_render_only.py"): ("from retainpdf_pipeline.render.workflow.render_only import main",),
-    Path("run_translate_only.py"): ("from retainpdf_pipeline.translate.entrypoints.translate_only_pipeline import main",),
 }
 
 

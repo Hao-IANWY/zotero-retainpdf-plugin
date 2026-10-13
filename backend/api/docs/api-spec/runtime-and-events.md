@@ -38,9 +38,9 @@ When the package command is unavailable, auto mode falls back to the compatible
 `services/pipeline/entrypoints/run_*.py` scripts. The stage spec and stdout
 contracts are identical in both modes.
 
-Legacy/local wrappers retained for manual runs (script-mode，仅桌面兼容）：
+保留的本地手动入口：
 
-- `retainpdf-pipeline provider-case`（`services/pipeline/entrypoints/run_provider_case.py` 仅桌面兼容）
+- `retainpdf-pipeline provider-case`
 - `run_document_flow.py`（script-mode，仅桌面兼容，无 console 等价物，对应 `services/pipeline/entrypoints/run_document_flow.py`）
 
 Current top-level workflow contract:

@@ -51,7 +51,7 @@
 脚本入口仅作为未安装包环境的兼容回退；`process_contract` 同时识别两种命令形态，
 因此成功产物校验不会因为启动方式变化而被绕过。
 
-`provider.stage.v1` 仍保留给 legacy/local `run_provider_case.py` wrapper；当前生产主链的 OCR provider
+`provider.stage.v1` 仍保留给本地手动入口 `retainpdf-pipeline provider-case`；当前生产主链的 OCR provider
 transport 由 Rust `ocr_flow` 直接编排，然后只把 normalize 交给 Python worker。
 
 ## 3. workflow 到 stage chain 的映射
@@ -69,7 +69,7 @@ parent job
   -> render
 ```
 
-这里的 provider transport 是 Rust 运行时逻辑，不是 `run_provider_case.py`。
+这里的 provider transport 是 Rust 运行时逻辑，不是 Python 侧的 provider 入口。
 
 入口代码：
 

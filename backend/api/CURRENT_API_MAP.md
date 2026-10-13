@@ -245,7 +245,7 @@ Rust 根据 workflow 选择运行计划：
 未安装 retainpdf-pipeline 的桌面兼容目录回退到 python services/pipeline/entrypoints/run_*.py --spec <job_root>/specs/<stage>.spec.json；两种启动方式
 消费同一份 stage spec，产物校验不依赖物理脚本路径。
 
-`retainpdf-pipeline provider-case` 仍保留 legacy/local wrapper 用于本地一次性验证 provider-backed 全流程（`run_provider_case.py` 仅桌面兼容）；不要把它当成
+`retainpdf-pipeline provider-case` 仍保留用于本地一次性验证 provider-backed 全流程；不要把它当成
 Rust API 生产主链入口。
 
 ## 6. 当前最重要的产物目录
@@ -305,9 +305,9 @@ Rust API 生产主链入口。
 - Rust job_runner 按 workflow 编排
 - Python stage worker 只执行单 stage
 
-保留的 local / legacy wrapper：
+保留的本地手动入口：
 
-- `retainpdf-pipeline provider-case`（`run_provider_case.py` 仅桌面兼容）
+- `retainpdf-pipeline provider-case`
 - `run_document_flow.py`（script-mode，仅桌面兼容，无 console 等价物）
 
 当前原则：
