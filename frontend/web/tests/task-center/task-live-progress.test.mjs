@@ -3,7 +3,9 @@
 // 这里钉住的都是真实复现过的 bug:
 //   1. diagnostic lane 的 percent 盖掉主进度(60% 倒退回 2%);
 //   2. 任务集合一变就关闭并重建全部连接;
-//   3. onerror 手动 close 后,任务集合不变就再也不重连。
+//   3. onerror 手动 close 后,任务集合不变就再也不重连;
+//   4. prefix 已是 /api/v1 又拼一层 /api/v1,SSE 全程 404,主页进度条永不渲染
+//      (2026-10-13 线上实测:/api/v1/api/v1/jobs/... → 404)。
 // 用假 EventSource 驱动,断言连接生命周期而不是源码文本。
 
 import test from 'node:test';
@@ -71,6 +73,16 @@ function mount(ids, onEnded = () => {}) {
 }
 
 const liveState = (host) => JSON.parse(host.querySelector('[data-live]').dataset.live);
+
+test('SSE URL 精确形状:prefix 已含 /api/v1,不得重复拼接', async () => {
+  FakeEventSource.reset();
+  const session = mount(['job-a']);
+  await session.render(['job-a']);
+  const urls = FakeEventSource.instances.map((es) => es.url);
+  assert.deepEqual(urls, ['/api/v1/jobs/job-a/progress-events'],
+    'prefix(/api/v1) 之上再拼 /api/v1 会得到 /api/v1/api/v1/...,线上 404');
+  await session.unmount();
+});
 
 test('主进度只消费 main lane,diagnostic 不回退 percent', async () => {
   FakeEventSource.reset();

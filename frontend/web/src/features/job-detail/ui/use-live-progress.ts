@@ -59,7 +59,9 @@ export function useLiveProgressEffect({
         return;
       }
       es = new EventSource(
-        `${apiPrefix}/api/v1/jobs/${encodeURIComponent(jobId)}/progress-events`,
+        // apiPrefix 是 API 级前缀(/api/v1,见 data-port.ts 默认值);
+        // 此前多拼一层 /api/v1 导致 SSE 全程 404,一直靠轮询兜底撑着。
+        `${apiPrefix}/jobs/${encodeURIComponent(jobId)}/progress-events`,
       );
       es.addEventListener("progress", (event) => {
         try {

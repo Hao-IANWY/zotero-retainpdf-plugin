@@ -15,6 +15,11 @@ declare namespace _ZoteroTypes {
       "llmModel": string;
       "llmBaseUrl": string;
       "llmApiKey": string;
+      "llmApiKeyDeepseek": string;
+      "llmModelDeepseek": string;
+      "llmBaseUrlCustom": string;
+      "llmApiKeyCustom": string;
+      "llmModelCustom": string;
       "workers": string;
     };
   }

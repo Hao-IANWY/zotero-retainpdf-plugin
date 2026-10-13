@@ -13,12 +13,14 @@ import { OFFICIAL_LLM_BASE_URL } from "../api";
  */
 
 // Feather 风格线性图标:密文态显示 eye(点击后可查看),明文态显示 eye-off
+// xmlns 必须显式声明:偏好面板是 XML(XHTML) 文档,innerHTML 走 XML 解析,
+// 缺 xmlns 的 <svg> 会落入 XHTML 命名空间而非 SVG 命名空间——元素在但不渲染。
 const EYE_OPEN_SVG =
-  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
 const EYE_OFF_SVG =
-  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
 const REFRESH_SVG =
-  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>';
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>';
 
 const HTML_NS = "http://www.w3.org/1999/xhtml";
 
@@ -75,22 +77,76 @@ export function registerPrefsScripts(win: Window) {
   ) as HTMLInputElement | null;
   if (officialInput) officialInput.value = OFFICIAL_LLM_BASE_URL;
 
+  const baseUrlInput = doc.getElementById(
+    prefElementId("llm-base-url"),
+  ) as HTMLInputElement | null;
+  const apiKeyInput = doc.getElementById(
+    prefElementId("llm-api-key"),
+  ) as HTMLInputElement | null;
+  const modelSelect = doc.getElementById(
+    prefElementId("llm-model"),
+  ) as HTMLSelectElement | null;
+
   // 历史值 "official" 与缺省都归一到 deepseek 分支
   const llmApiMode = getPref("llmApiMode") === "custom" ? "custom" : "deepseek";
   const syncLlmRows = (mode: string) => {
     setRowVisible("llm-base-url-official-row", mode === "deepseek");
     setRowVisible("llm-base-url-custom-row", mode === "custom");
   };
+
+  // 各供应商配置分槽存档:切换时先把当前值压回旧供应商槽位,再从新供应商
+  // 槽位恢复(从未配置过则恢复为空,呈现未输入态)。生效键
+  // (llmBaseUrl/llmApiKey/llmModel)仍是任务发起与连接检查的唯一读取口。
   initSegment(doc, prefElementId("llm-mode"), llmApiMode, (value) => {
+    const prev = getPref("llmApiMode") === "custom" ? "custom" : "deepseek";
+    // 读 DOM 而非偏好:输入框的绑定写回发生在失焦时,点击瞬间偏好可能滞后
+    const current = {
+      baseUrl: baseUrlInput?.value ?? "",
+      apiKey: apiKeyInput?.value ?? "",
+      model: modelSelect?.value ?? "",
+    };
+    if (prev === "deepseek") {
+      setPref("llmApiKeyDeepseek", current.apiKey);
+      setPref("llmModelDeepseek", current.model);
+    } else {
+      setPref("llmBaseUrlCustom", current.baseUrl);
+      setPref("llmApiKeyCustom", current.apiKey);
+      setPref("llmModelCustom", current.model);
+    }
+    const restored = {
+      baseUrl: value === "custom" ? getPref("llmBaseUrlCustom") || "" : "",
+      apiKey:
+        (value === "custom"
+          ? getPref("llmApiKeyCustom")
+          : getPref("llmApiKeyDeepseek")) || "",
+      model:
+        (value === "custom"
+          ? getPref("llmModelCustom")
+          : getPref("llmModelDeepseek")) || "",
+    };
+    if (apiKeyInput) apiKeyInput.value = restored.apiKey;
+    if (baseUrlInput) baseUrlInput.value = restored.baseUrl;
+    setPref("llmApiKey", restored.apiKey);
+    setPref("llmBaseUrl", restored.baseUrl);
+    setPref("llmModel", restored.model);
+    if (modelSelect) {
+      fillModelOptions(
+        modelSelect,
+        restored.model ? [restored.model] : [],
+        restored.model,
+        getString("pref-models-empty"),
+      );
+    }
     setPref("llmApiMode", value);
     syncLlmRows(value);
+    // 旧供应商的检查结论对新配置不成立,清掉避免误导
+    doc
+      .getElementById(prefElementId("check-result-llm"))
+      ?.toggleAttribute("hidden", true);
   });
   syncLlmRows(llmApiMode);
 
   // ---- 模型下拉:初始只含已保存值(或提示项),完整列表靠刷新拉取 ----
-  const modelSelect = doc.getElementById(
-    prefElementId("llm-model"),
-  ) as HTMLSelectElement | null;
   if (modelSelect) {
     const current = (getPref("llmModel") as string) || "";
     fillModelOptions(

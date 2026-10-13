@@ -47,7 +47,9 @@ export function useTaskLiveProgress(
       if (sources.has(jobId) || typeof window.EventSource === "undefined") return;
       const EventSourceCtor = window.EventSource;
       const es = new EventSourceCtor(
-        `${prefixRef.current}/api/v1/jobs/${encodeURIComponent(jobId)}/progress-events`,
+        // prefix 是 API 级前缀(/api/v1),与 API_PREFIX 常量同契约;
+        // 别再拼一层 /api/v1——重复后 SSE 全程 404,进度条两个数据源全空。
+        `${prefixRef.current}/jobs/${encodeURIComponent(jobId)}/progress-events`,
       );
       es.addEventListener("progress", (event) => {
         try {
