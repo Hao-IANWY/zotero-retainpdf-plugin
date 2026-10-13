@@ -84,8 +84,20 @@ export function useTaskCenterAutoRefresh({
 
   useEffect(() => {
     const timer = window.setInterval(() => {
+      // 页面隐藏时降频:跳过本拍(浏览器对后台标签页的定时器节流兜底),
+      // 避免不可见时继续打后端
+      if (document.visibilityState === "hidden") return;
       void discoverNewJobs();
     }, TASK_CENTER_AUTO_REFRESH_MS);
-    return () => window.clearInterval(timer);
+    // 恢复可见立即校准一次,不等下一拍
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== "visible") return;
+      void discoverNewJobs();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [discoverNewJobs]);
 }
