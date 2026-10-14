@@ -168,9 +168,14 @@ export function registerPrefsScripts(win: Window) {
     refreshBtn.innerHTML = REFRESH_SVG;
     refreshBtn.title = getString("pref-models-refresh");
     refreshBtn.addEventListener("click", () => {
-      (Zotero as any)[addon.data.config.addonInstance].hooks.onPrefsEvent(
-        "fetchModels",
-        { window: win },
+      // onPrefsEvent 是 async:兜住编程性异常,避免 unhandled rejection 被静默吞掉
+      const pending = (Zotero as any)[
+        addon.data.config.addonInstance
+      ].hooks.onPrefsEvent("fetchModels", {
+        window: win,
+      }) as Promise<void> | undefined;
+      pending?.catch((error) =>
+        ztoolkit.log(`[prefs] fetch models crashed: ${error}`),
       );
     });
   }

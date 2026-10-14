@@ -17,6 +17,10 @@ RetainPDF 的 Zotero 7+ 客户端插件（含 Zotero 10）（TypeScript，zotero
   （官方 DeepSeek 预置 / 自定义）在偏好页做成分段选项，凭据/模型/并发随任务携带
   （prefs 前置）。
 
+- 监控台窗口（`src/modules/monitorWindow.ts`）：Dialog 非模态大窗内嵌 XUL
+  `<browser>` 直接加载监控台现网 HTML——禁止在插件里重做任何监控台 UI；
+  开窗前探测 `{root}/index.html`，错址不开空窗；v1 仅支持无边缘认证直连
+  （本机/内网/tailscale），Cloudflare Access 公网形态此窗口天然不可用。
 - 兼容范围：manifest 必须写 `strict_max_version: "*"`——实测 Zotero 10：上限不写
   会被当未适配拒装，写死 `8.*`/`10.0.*` 又会在下个大版本拒装；`"*"` 是 Zotero
   官方测试插件的写法。`strict_min_version` 保持 6.999，兼容问题由真实 API 报告驱动修复。

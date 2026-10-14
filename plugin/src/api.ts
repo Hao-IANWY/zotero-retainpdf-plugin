@@ -236,7 +236,10 @@ export class RetainPdfClient {
       // ArrayBuffer 会被底层 NetUtil.asyncCopy 拒绝(nsIAsyncStreamCopier2.init
       // NS_ERROR_FAILURE)——putContentsAsync 的非字符串路径要求可包装成
       // nsIInputStream 的类型,Zotero 官方保存路径统一传 Uint8Array。
-      await Zotero.File.putContentsAsync(targetPath, new Uint8Array(response.response) as any);
+      await Zotero.File.putContentsAsync(
+        targetPath,
+        new Uint8Array(response.response) as any,
+      );
     } catch (error) {
       throw new Error(
         `写入 ${targetPath} 失败: ${error instanceof Error ? error.message : error}`,

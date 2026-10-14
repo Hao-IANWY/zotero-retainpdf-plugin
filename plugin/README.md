@@ -5,8 +5,7 @@
 
 Zotero 7+ 客户端插件（含 Zotero 10），为 RetainPDF 服务端提供"右键附件 → 整篇排版保留翻译 → 双语 PDF 挂回条目"的入口。
 
-> 状态：M0 脚手架（右键菜单 + 附件识别 + 偏好配置 + 连接检查）。
-> 上传与翻译链路按里程碑推进，见 [docs/ops/planning/milestones.md](docs/ops/planning/milestones.md)。
+> 状态：全链路可用（右键翻译 → 上传 → 服务端 OCR/翻译 → 双语 PDF 挂回），版本随 release 发布。
 
 ## 安装（开发模式）
 
@@ -21,19 +20,20 @@ Zotero → 工具 → 插件 → 齿轮 → Install Plugin From File，选择构
 
 ## 配置
 
-Zotero 设置 → RetainPDF：
+Zotero 设置 → RetainPDF，三张卡片（服务器 / OCR 识别 / 翻译模型）各带独立"检查连接"：
 
-| 项 | 说明 | 默认 |
-|---|---|---|
-| 服务地址 | RetainPDF 服务端 Base URL | `http://127.0.0.1:40001` |
-| API Key | 服务端 `RUST_API_KEYS` 中的钥匙 | 空 |
-| 目标语言 | 翻译目标语言 | `zh` |
+| 项       | 说明                                                                          | 默认                     |
+| -------- | ----------------------------------------------------------------------------- | ------------------------ |
+| 服务地址 | RetainPDF 服务端 Base URL                                                     | `http://127.0.0.1:40001` |
+| OCR 识别 | PaddleOCR / MinerU 二选一，填对应 Token（随任务发送，服务端校验）             | MinerU，Token 空         |
+| 翻译模型 | DeepSeek 预置 / 自定义 OpenAI 兼容端点；填 API Key 后点"获取模型列表"选择模型 | DeepSeek，Key 空         |
+| 并发数   | 同时处理的翻译任务数                                                          | `5`                      |
 
-填好后点"检查连接"应显示服务端版本。
+插件不设服务端 API Key：访问控制由部署层（内网直连）兜底，请求不带 `X-API-Key`。
 
-## 用法（M0）
+## 用法
 
-右键任意含 PDF 附件的条目 → "使用 RetainPDF 翻译"。M0 阶段会识别并列出 PDF 附件路径；上传与翻译将在 M1 接通。
+右键任意含 PDF 附件的条目 → "使用 RetainPDF 翻译"：上传原 PDF → 服务端 OCR/翻译 → 双语 PDF 下载挂回条目，进度在进度窗实时显示。
 
 ## 许可证
 

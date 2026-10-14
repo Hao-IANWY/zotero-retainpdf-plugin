@@ -5,6 +5,10 @@ import {
   registerPrefsScripts,
 } from "./modules/preferenceScript";
 import { registerTranslateMenuItem } from "./modules/translateMenu";
+import {
+  closeMonitorWindow,
+  registerMonitorMenuItems,
+} from "./modules/monitorWindow";
 import { createZToolkit } from "./utils/ztoolkit";
 import { OFFICIAL_LLM_BASE_URL, RetainPdfClient } from "./api";
 
@@ -16,6 +20,22 @@ async function onStartup() {
   ]);
 
   initLocale();
+
+  // Gecko(Firefox 112+)默认在每个密码框内部渲染原生"显示密码"眼睛,和偏好页
+  // 插件注入的外围眼睛叠成两只。CSS 够不到 UA shadow DOM,只能关平台默认;
+  // Zotero 自身几乎没有密码框,仅少一个显隐按钮,无其它副作用。
+  try {
+    const { Services } = (globalThis as any).ChromeUtils.importESModule(
+      "resource://gre/modules/Services.sys.mjs",
+    );
+    Services.prefs.setBoolPref(
+      "layout.forms.reveal-password-button.enabled",
+      false,
+    );
+  } catch (error) {
+    // 老内核没有该 pref 或导入失败:退化为两只眼睛并存,不影响其余功能
+    ztoolkit.log(`[startup] disable native reveal-password failed: ${error}`);
+  }
 
   // 注册偏好面板：不调用这步,Zotero 设置里不会出现本插件的入口。
   // 样式表必须经 stylesheets 参数注入——pane 文档不会处理 linkset 里的
@@ -44,6 +64,7 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
   );
 
   registerTranslateMenuItem(win);
+  registerMonitorMenuItems();
 }
 
 async function onMainWindowUnload(win: Window): Promise<void> {
@@ -51,6 +72,7 @@ async function onMainWindowUnload(win: Window): Promise<void> {
 }
 
 function onShutdown(): void {
+  closeMonitorWindow();
   ztoolkit.unregisterAll();
   addon.data.alive = false;
   // @ts-expect-error - Plugin instance is not typed
@@ -90,8 +112,9 @@ const checkBtnResetTimers: Record<string, ReturnType<typeof setTimeout>> = {};
  * 检查反馈双通道:
  * - 状态行(卡片头部下方,data-state 着色,持久显示结果详情)
  * - 按钮自身状态机(检查中禁用 → 成功绿 / 失败红,2.5s 后恢复默认)
+ * 模型拉取等非"检查"动作只走 setStatusLine,不惊动检查按钮。
  */
-function setCheckState(
+function setStatusLine(
   win: Window,
   group: "server" | "ocr" | "llm",
   state: "checking" | "ok" | "fail",
@@ -105,6 +128,17 @@ function setCheckState(
     resultEl.setAttribute("data-state", state);
     resultEl.textContent = text;
   }
+}
+
+function setCheckState(
+  win: Window,
+  group: "server" | "ocr" | "llm",
+  state: "checking" | "ok" | "fail",
+  text: string,
+) {
+  const prefId = (suffix: string) =>
+    `zotero-prefpane-${addon.data.config.addonRef}-${suffix}`;
+  setStatusLine(win, group, state, text);
   const btn = win.document.getElementById(prefId(`check-${group}`)) as
     | (HTMLElement & { disabled: boolean })
     | null;
@@ -195,8 +229,9 @@ async function checkLlm(win: Window) {
 }
 
 /**
- * 拉取供应商可用模型填充下拉。失败不写检查状态区(避免覆盖"连接成功"),
- * 只更新下拉自身的提示项并记日志——用户可点刷新按钮重试。
+ * 拉取供应商可用模型填充下拉。此前失败原因只进日志(生产 console 关闭),
+ * 下拉里只有提示项文案微变,用户观感就是"点了没效果"——现在把成败与
+ * 原因都写上 LLM 状态行,失败时老板能直接把文案发回来定位。
  */
 async function fetchModels(win: Window) {
   const doc = win.document;
@@ -208,11 +243,19 @@ async function fetchModels(win: Window) {
   const refreshBtn = doc.getElementById(prefId("llm-models-refresh"));
   if (!selectEl || !refreshBtn) return;
 
+  // 优先读输入框现值:preference 绑定写回发生在失焦时,点击瞬间偏好可能滞后
   const isCustom = getPref("llmApiMode") === "custom";
   const baseUrl = (
-    (isCustom ? getPref("llmBaseUrl") : OFFICIAL_LLM_BASE_URL) || ""
+    (isCustom
+      ? (doc.getElementById(prefId("llm-base-url")) as HTMLInputElement | null)
+          ?.value || (getPref("llmBaseUrl") as string)
+      : OFFICIAL_LLM_BASE_URL) || ""
   ).replace(/\/+$/, "");
-  const apiKey = getPref("llmApiKey") as string;
+  const apiKey =
+    (doc.getElementById(prefId("llm-api-key")) as HTMLInputElement | null)
+      ?.value ||
+    (getPref("llmApiKey") as string) ||
+    "";
   if (!baseUrl || !apiKey) {
     fillModelOptions(selectEl, [], "", getString("pref-models-need-key"));
     return;
@@ -229,9 +272,21 @@ async function fetchModels(win: Window) {
       // 已保存的模型不在新列表中时,回落到第一项并固化
       setPref("llmModel", selectEl.value);
     }
+    setStatusLine(
+      win,
+      "llm",
+      "ok",
+      getString("pref-models-ok", { args: { count: models.length } }),
+    );
   } catch (error) {
     ztoolkit.log(`[prefs] fetch models failed: ${errorReason(error)}`);
     fillModelOptions(selectEl, [], "", getString("pref-models-fail"));
+    setStatusLine(
+      win,
+      "llm",
+      "fail",
+      getString("pref-check-fail", { args: { reason: errorReason(error) } }),
+    );
   } finally {
     refreshBtn.removeAttribute("data-state");
     selectEl.disabled = false;

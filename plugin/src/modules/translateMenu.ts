@@ -123,7 +123,11 @@ async function translateSelectedItems() {
     }
   }
   // 全部成功才自动关窗;有失败时保留现场等用户看完手动关(closeOnClick)
-  if (!anyFailed) progress.startCloseTimer(8000);
+  if (!anyFailed) {
+    // 顺手指个路:队列与详情在监控台窗口里看更全(计划 M2 体验收尾)
+    progress.addDescription(getString("monitor-hint"));
+    progress.startCloseTimer(8000);
+  }
 }
 
 /**
@@ -136,7 +140,6 @@ async function translateOne(
   target: PdfTarget,
   onStage: (text: string, percent?: number) => void,
 ): Promise<{ client: RetainPdfClient; jobId: string }> {
-
   onStage(getString("menu-stage-uploading"));
   await appendPluginLog(`START ${target.filename}`);
   const uploadId = await client.uploadPdf(target.path, target.filename);
