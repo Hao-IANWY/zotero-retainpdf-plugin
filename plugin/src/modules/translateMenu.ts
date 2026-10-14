@@ -1,6 +1,7 @@
 import { config } from "../../package.json";
 import { getString } from "../utils/locale";
 import { getPref } from "../utils/prefs";
+import { appendPluginLog } from "../utils/log";
 import { OFFICIAL_LLM_BASE_URL, RetainPdfClient } from "../api";
 
 /**
@@ -9,31 +10,6 @@ import { OFFICIAL_LLM_BASE_URL, RetainPdfClient } from "../api";
  */
 const JOB_TIMEOUT_MS = 60 * 60 * 1000;
 const TERMINAL_POLL_MS = 10000;
-
-/** 插件本地日志:Zotero profile 下的 retainpdf-plugin.log,追加写+体积裁剪。 */
-const LOG_FILE_NAME = "retainpdf-plugin.log";
-const LOG_MAX_BYTES = 512 * 1024;
-
-async function appendPluginLog(line: string): Promise<void> {
-  try {
-    const path = `${Zotero.getProfileDirectory().path}/${LOG_FILE_NAME}`;
-    let previous = "";
-    try {
-      previous = ((await Zotero.File.getContentsAsync(path)) as string) || "";
-    } catch {
-      // 首次运行无文件
-    }
-    const next = `${previous}[${new Date().toISOString()}] ${line}\n`;
-    // 超限从头截断,保最近一半,避免日志无限膨胀
-    const trimmed =
-      next.length > LOG_MAX_BYTES
-        ? next.slice(Math.floor(next.length - LOG_MAX_BYTES / 2))
-        : next;
-    await Zotero.File.putContentsAsync(path, trimmed);
-  } catch {
-    // 日志失败绝不影响主流程
-  }
-}
 
 /**
  * 右键条目菜单:"使用 RetainPDF 翻译"。菜单项是最终交互入口,不换位置。

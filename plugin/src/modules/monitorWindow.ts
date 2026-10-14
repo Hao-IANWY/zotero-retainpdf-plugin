@@ -1,6 +1,7 @@
 import { config } from "../../package.json";
 import { getString } from "../utils/locale";
 import { getPref, setPref } from "../utils/prefs";
+import { appendPluginLog } from "../utils/log";
 import type { DialogHelper } from "zotero-plugin-toolkit";
 
 /**
@@ -39,7 +40,7 @@ function monitorRootURL(): string {
   return ((getPref("serverBaseURL") as string) || "").replace(/\/+$/, "");
 }
 
-/** 「工具」菜单兜底入口 + 主窗口工具栏按钮。 */
+/** 「工具」菜单兜底入口 + 搜索栏右侧按钮(老板钦定位置)。 */
 export function registerMonitorEntry(win: _ZoteroTypes.MainWindow) {
   const open = () => void openMonitorWindow();
   ztoolkit.Menu.register("menuTools", {
@@ -50,12 +51,19 @@ export function registerMonitorEntry(win: _ZoteroTypes.MainWindow) {
     commandListener: open,
   });
 
-  // 工具栏按钮:逐窗口注入,重复进入(多窗口/重载)按 id 去重
+  // 按钮注入到 #zotero-items-toolbar 末尾——Zotero 7 主窗口条目工具栏里
+  // spacer 之后的搜索区(搜索框 #zotero-tb-search 的父容器),即老板钦定的
+  // 搜索栏右侧位置;逐层回退防 Zotero 改版。逐窗口注入,按 id 去重。
   const doc = win.document;
   if (doc.getElementById(TOOLBAR_BUTTON_ID)) return;
-  const toolbar = doc.getElementById("zotero-toolbar");
-  if (!toolbar) {
-    ztoolkit.log("[monitor] #zotero-toolbar not found, toolbar entry skipped");
+  const anchor =
+    doc.getElementById("zotero-items-toolbar") ??
+    doc.getElementById("zotero-tb-search")?.parentElement ??
+    doc.getElementById("zotero-toolbar-item-tree");
+  if (!anchor) {
+    void appendPluginLog(
+      "[monitor] neither #zotero-tb-search nor #zotero-toolbar found, button skipped",
+    );
     return;
   }
   const btn = doc.createElementNS(
@@ -65,9 +73,16 @@ export function registerMonitorEntry(win: _ZoteroTypes.MainWindow) {
   btn.id = TOOLBAR_BUTTON_ID;
   btn.classList.add("zotero-tb-button");
   btn.setAttribute("tooltiptext", getString("monitor-window-title"));
-  btn.style.listStyleImage = `url(chrome://${config.addonRef}/content/icons/favicon@0.5x.png)`;
+  // image 属性与 list-style-image 双保险:Zotero 7 工具栏对两种图标机制
+  // 的覆盖随版本变,只设一种有过不显示的先例
+  const iconUrl = `chrome://${config.addonRef}/content/icons/favicon@0.5x.png`;
+  btn.setAttribute("image", iconUrl);
+  btn.style.listStyleImage = `url(${iconUrl})`;
   btn.addEventListener("command", open);
-  toolbar.appendChild(btn);
+  anchor.appendChild(btn);
+  void appendPluginLog(
+    `[monitor] toolbar button injected under #${anchor.id || anchor.tagName}`,
+  );
 }
 
 /** 窗口卸载时摘掉该窗口的工具栏按钮(菜单注册由 ztoolkit.unregisterAll 兜底)。 */
@@ -87,6 +102,7 @@ export async function openMonitorWindow(): Promise<void> {
     return;
   }
   const root = monitorRootURL();
+  void appendPluginLog(`[monitor] open requested, root=${root || "(empty)"}`);
   if (!root) {
     notifyMonitor(getString("monitor-notify-no-server"));
     return;
@@ -100,14 +116,65 @@ export async function openMonitorWindow(): Promise<void> {
       throw new Error(`HTTP ${probe.status}`);
     }
   } catch (error) {
-    const reason =
-      error instanceof Error && error.message ? error.message : "network error";
+    void appendPluginLog(
+      `[monitor] probe FAILED: ${describeThrown(error)}${proxyHintForLan(root)}`,
+    );
     notifyMonitor(
-      getString("monitor-notify-unreachable", { args: { reason } }),
+      getString("monitor-notify-unreachable", {
+        args: { reason: describeThrown(error) },
+      }),
     );
     return;
   }
-  buildWindow(root);
+  void appendPluginLog("[monitor] probe ok, building window");
+  try {
+    buildWindow(root);
+  } catch (error) {
+    // 开窗本身崩了( Dialog/browser 异常 ):不留静默,写日志+弹通知
+    void appendPluginLog(`[monitor] buildWindow FAILED: ${describeThrown(error)}`);
+    notifyMonitor(
+      getString("monitor-notify-unreachable", {
+        args: { reason: `window: ${describeThrown(error)}` },
+      }),
+    );
+  }
+}
+
+/** 把任意抛出物拍平成单行日志文本:Error 取栈首行,对象取 JSON。 */
+function describeThrown(error: unknown): string {
+  if (error instanceof Error) return `${error.name}: ${error.message}`;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
+/**
+ * 内网地址(本机/tailscale/私网段) + Zotero 代理开启 = 探测失败的第一嫌疑
+ * (系统 curl 直连通、Zotero 内走代理挂)。日志里直接点名代理配置,
+ * 老板发回日志时一眼定位,不用再问一轮。
+ */
+function proxyHintForLan(root: string): string {
+  const isLan =
+    /^https?:\/\/(localhost|127\.|10\.|100\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(
+      root,
+    );
+  if (!isLan) return "";
+  try {
+    const { Services } = (globalThis as any).ChromeUtils.importESModule(
+      "resource://gre/modules/Services.sys.mjs",
+    );
+    const type = Services.prefs.getIntPref("network.proxy.type", 0);
+    if (type === 0) return "";
+    const noProxy = Services.prefs.getCharPref(
+      "network.proxy.no_proxies_on",
+      "",
+    );
+    return ` | proxy enabled (type=${type}, no_proxies_on="${noProxy}")`;
+  } catch {
+    return "";
+  }
 }
 
 /** 插件停用/重启时关窗,避免悬空窗口指向已注销的资源。 */
@@ -129,11 +196,22 @@ function buildWindow(root: string) {
       namespace: "xul",
       id: `${config.addonRef}-monitor-browser`,
       attributes: {
-        flex: 1,
-        src: `${root}/index.html`,
         type: "content",
         disablehistory: "true",
+        flex: 1,
+        src: `${root}/index.html`,
       },
+      // browser 内部加载成败不进 Dialog 的回调——白屏还是没白屏,全靠这两个事件分辨
+      listeners: [
+        {
+          type: "load",
+          listener: () => void appendPluginLog("[monitor] browser load fired"),
+        },
+        {
+          type: "error",
+          listener: () => void appendPluginLog("[monitor] browser error event"),
+        },
+      ],
     },
     true,
   );

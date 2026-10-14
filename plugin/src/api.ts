@@ -4,6 +4,25 @@ import { getPref } from "./utils/prefs";
 export const OFFICIAL_LLM_BASE_URL = "https://api.deepseek.com/v1";
 
 /**
+ * 网络层失败的兜底描述。Zotero.HTTP.request 拒绝时抛的不一定是带 message 的
+ * Error(可能是 XHR 状态对象/ ProgressEvent),笼统的 "network error" 让内网
+ * 地址走代理这类问题无从排查——把 name/status/code 等能挖的都挖出来。
+ */
+function describeNetError(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "object" && error !== null) {
+    const anyErr = error as Record<string, unknown>;
+    const bits = [
+      typeof anyErr.name === "string" ? anyErr.name : "",
+      anyErr.status != null ? `status=${anyErr.status}` : "",
+      anyErr.code != null ? `code=${anyErr.code}` : "",
+    ].filter(Boolean);
+    if (bits.length) return `network error (${bits.join(" ")})`;
+  }
+  return `network error (${String(error)})`;
+}
+
+/**
  * RetainPDF 服务端 API 客户端。
  *
  * 消费纪律(与 docs/api/README 对齐):
@@ -34,10 +53,7 @@ export class RetainPdfClient {
       const version = response.response?.version ?? "";
       return version;
     } catch (error) {
-      if (error instanceof Error && error.message) {
-        throw new Error(error.message);
-      }
-      throw new Error("network error");
+      throw new Error(describeNetError(error));
     }
   }
 
@@ -89,10 +105,7 @@ export class RetainPdfClient {
       }
       body = response.response;
     } catch (error) {
-      if (error instanceof Error && error.message) {
-        throw new Error(error.message);
-      }
-      throw new Error("network error");
+      throw new Error(describeNetError(error));
     }
     if (body?.code !== 0) {
       throw new Error(body?.message || `code ${body?.code}`);
@@ -122,10 +135,7 @@ export class RetainPdfClient {
       }
       body = response.response;
     } catch (error) {
-      if (error instanceof Error && error.message) {
-        throw new Error(error.message);
-      }
-      throw new Error("network error");
+      throw new Error(describeNetError(error));
     }
     const list = Array.isArray(body?.data) ? body.data : [];
     const ids = list

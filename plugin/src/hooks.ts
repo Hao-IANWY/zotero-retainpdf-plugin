@@ -1,5 +1,6 @@
 import { getString, initLocale } from "./utils/locale";
 import { getPref, setPref } from "./utils/prefs";
+import { appendPluginLog } from "./utils/log";
 import {
   fillModelOptions,
   registerPrefsScripts,
@@ -151,12 +152,18 @@ function setCheckState(
 const errorReason = (error: unknown) =>
   error instanceof Error && error.message ? error.message : "unknown";
 
+/** 检查失败双通道之外再落一份插件日志:状态行会随界面关闭消失,日志可回传定位。 */
+function logCheckFail(group: string, error: unknown) {
+  void appendPluginLog(`[prefs] check ${group} failed: ${errorReason(error)}`);
+}
+
 async function checkConnection(win: Window) {
   setCheckState(win, "server", "checking", getString("pref-checking"));
   try {
     await new RetainPdfClient().checkHealth();
     setCheckState(win, "server", "ok", getString("pref-verify-ok"));
   } catch (error) {
+    logCheckFail("server", error);
     setCheckState(
       win,
       "server",
@@ -205,6 +212,7 @@ async function checkLlm(win: Window) {
     // 凭证有效后顺手拉取模型列表,用户无需再点一次刷新
     await fetchModels(win);
   } catch (error) {
+    logCheckFail("llm", error);
     setCheckState(
       win,
       "llm",
@@ -265,6 +273,7 @@ async function fetchModels(win: Window) {
       getString("pref-models-ok", { args: { count: models.length } }),
     );
   } catch (error) {
+    logCheckFail("models", error);
     ztoolkit.log(`[prefs] fetch models failed: ${errorReason(error)}`);
     fillModelOptions(selectEl, [], "", getString("pref-models-fail"));
     setStatusLine(

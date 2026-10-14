@@ -9,5 +9,5 @@ prefs-title = RetainPDF
 menu-monitor-label = RetainPDF Monitor
 monitor-window-title = RetainPDF Monitor
 monitor-notify-no-server = No server URL configured. Fill it in RetainPDF preferences first
-monitor-notify-unreachable = Monitor unreachable ({ $reason }): make sure the service is up and the server URL points at the web entry (same-origin static pages + API), not the backend API port or an edge-auth-protected public address
-monitor-hint = Click the RetainPDF toolbar button to browse the task queue
+monitor-notify-unreachable = Monitor unreachable ({ $reason }): make sure the service is up and the URL points at the web entry; if Zotero uses a network proxy, add the server address to the bypass list
+monitor-hint = Click the RetainPDF button next to the search bar to browse the task queue
