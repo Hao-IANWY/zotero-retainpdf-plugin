@@ -52,7 +52,7 @@ class FallbackPolicy:
 @dataclass(frozen=True)
 class TimeoutPolicy:
     plain_text_seconds: int = 35
-    batch_plain_text_seconds: int = 45
+    batch_plain_text_seconds: int = 60
     formula_segment_seconds: int = 60
     formula_window_seconds: int = 75
     long_plain_text_seconds: int = 55
