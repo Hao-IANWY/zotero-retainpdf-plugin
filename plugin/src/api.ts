@@ -1,4 +1,5 @@
 import { getPref } from "./utils/prefs";
+import { appendPluginLog } from "./utils/log";
 
 /** LLM「官方」选项的预置端点(DeepSeek),只读展示,不进入偏好存储。 */
 export const OFFICIAL_LLM_BASE_URL = "https://api.deepseek.com/v1";
@@ -133,7 +134,16 @@ export class RetainPdfClient {
     }
     const data = body.data;
     if (!data?.ok) {
-      throw new Error(data?.summary || data?.operator_hint || "rejected");
+      // provider_message 是后端从供应商响应/传输错误里挖出的底层真因
+      // (网关人话或 reqwest 错误全文),排查价值最高;summary 是笼统分类文案。
+      // 状态行显示真因,分类字段全量进插件日志备查。
+      void appendPluginLog(
+        `[probe] fail: status=${data?.status} summary=${data?.summary} ` +
+          `hint=${data?.operator_hint} provider=${data?.provider_message}`,
+      );
+      throw new Error(
+        data?.provider_message || data?.summary || data?.operator_hint || "rejected",
+      );
     }
     return data.summary || "";
   }
