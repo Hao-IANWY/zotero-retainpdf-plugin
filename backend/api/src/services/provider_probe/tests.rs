@@ -5,57 +5,86 @@ use crate::ocr_provider::paddle::PaddleProviderError;
 
 #[test]
 fn validate_provider_base_url_allows_public_https_host() {
-    assert!(validate_provider_base_url("https://api.deepseek.com/v1", false).is_ok());
+    assert!(validate_provider_base_url("https://api.deepseek.com/v1", false, &[]).is_ok());
 }
 
 #[test]
 fn validate_provider_base_url_rejects_non_http_scheme() {
-    let err = validate_provider_base_url("ftp://example.com", false).unwrap_err();
+    let err = validate_provider_base_url("ftp://example.com", false, &[]).unwrap_err();
     assert!(err.to_string().contains("scheme"));
 }
 
 #[test]
 fn validate_provider_base_url_rejects_localhost_hostname() {
-    let err = validate_provider_base_url("http://localhost:11434", false).unwrap_err();
+    let err = validate_provider_base_url("http://localhost:11434", false, &[]).unwrap_err();
     assert!(err.to_string().contains("not allowed"));
 }
 
 #[test]
 fn validate_provider_base_url_rejects_loopback_ip() {
-    let err = validate_provider_base_url("http://127.0.0.1:8080", false).unwrap_err();
+    let err = validate_provider_base_url("http://127.0.0.1:8080", false, &[]).unwrap_err();
     assert!(err.to_string().contains("not allowed"));
 }
 
 #[test]
 fn validate_provider_base_url_rejects_link_local_metadata_ip() {
-    let err = validate_provider_base_url("http://169.254.169.254/latest", false).unwrap_err();
+    let err = validate_provider_base_url("http://169.254.169.254/latest", false, &[]).unwrap_err();
     assert!(err.to_string().contains("not allowed"));
 }
 
 #[test]
 fn validate_provider_base_url_rejects_private_network_ranges() {
-    assert!(validate_provider_base_url("http://10.0.0.5", false).is_err());
-    assert!(validate_provider_base_url("http://172.16.0.5", false).is_err());
-    assert!(validate_provider_base_url("http://192.168.1.5", false).is_err());
+    assert!(validate_provider_base_url("http://10.0.0.5", false, &[]).is_err());
+    assert!(validate_provider_base_url("http://172.16.0.5", false, &[]).is_err());
+    assert!(validate_provider_base_url("http://192.168.1.5", false, &[]).is_err());
 }
 
 #[test]
 fn validate_provider_base_url_rejects_ipv6_loopback_and_unique_local() {
-    assert!(validate_provider_base_url("http://[::1]", false).is_err());
-    assert!(validate_provider_base_url("http://[fc00::1]", false).is_err());
-    assert!(validate_provider_base_url("http://[fe80::1]", false).is_err());
+    assert!(validate_provider_base_url("http://[::1]", false, &[]).is_err());
+    assert!(validate_provider_base_url("http://[fc00::1]", false, &[]).is_err());
+    assert!(validate_provider_base_url("http://[fe80::1]", false, &[]).is_err());
 }
 
 #[test]
 fn validate_provider_base_url_rejects_embedded_credentials() {
-    let err = validate_provider_base_url("https://user:pass@example.com", false).unwrap_err();
+    let err = validate_provider_base_url("https://user:pass@example.com", false, &[]).unwrap_err();
     assert!(err.to_string().contains("credentials"));
 }
 
 #[test]
 fn validate_provider_base_url_allow_private_urls_escape_hatch() {
-    assert!(validate_provider_base_url("http://127.0.0.1:11434", true).is_ok());
-    assert!(validate_provider_base_url("http://localhost:11434", true).is_ok());
+    assert!(validate_provider_base_url("http://127.0.0.1:11434", true, &[]).is_ok());
+    assert!(validate_provider_base_url("http://localhost:11434", true, &[]).is_ok());
+}
+
+// --- 部署者主机白名单(RUST_API_ALLOWED_PROVIDER_HOSTS) --------------------
+// tailscale/内网自建网关的精确放行姿势:名单内跳过私网拦截,名单外照旧。
+
+#[test]
+fn validate_provider_base_url_whitelists_cgnat_tailscale_ip() {
+    let hosts = vec!["100.64.0.1".to_string()];
+    assert!(validate_provider_base_url("http://100.64.0.1:8084/v1", false, &hosts).is_ok());
+    // 名单外的 tailscale 地址照常拦
+    assert!(validate_provider_base_url("http://100.64.0.2:8084/v1", false, &hosts).is_err());
+}
+
+#[test]
+fn validate_provider_base_url_whitelists_domain_case_insensitive() {
+    let hosts = vec!["gw.internal.example".to_string()];
+    assert!(validate_provider_base_url("http://GW.Internal.Example:8084", false, &hosts).is_ok());
+    // 白名单不放行其他私网语义:localhost 仍拦
+    assert!(validate_provider_base_url("http://localhost:11434", false, &hosts).is_err());
+}
+
+#[test]
+fn validate_provider_base_url_whitelist_does_not_skip_scheme_and_credentials_checks() {
+    let hosts = vec!["100.64.0.1".to_string()];
+    // 白名单只跳过私网段检查,scheme/内嵌凭据校验依然生效
+    assert!(validate_provider_base_url("ftp://100.64.0.1:8084", false, &hosts).is_err());
+    assert!(
+        validate_provider_base_url("http://user:pass@100.64.0.1:8084", false, &hosts).is_err()
+    );
 }
 
 #[test]

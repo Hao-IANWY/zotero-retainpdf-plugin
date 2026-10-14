@@ -1,13 +1,33 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
-use super::env_vars::{env_bool, env_string, env_u16, env_u32, env_u64, env_usize};
+use super::env_vars::{
+    env_bool, env_optional_string, env_string, env_u16, env_u32, env_u64, env_usize,
+};
 
 /// Shared escape hatch for self-hosted/local OCR & LLM endpoints (e.g. Ollama on
 /// localhost). When unset, client-supplied provider `base_url` values pointing at
 /// loopback/link-local/private-network hosts are rejected to prevent SSRF /
 /// credential-exfiltration via a spoofed `base_url`.
 const ALLOW_PRIVATE_PROVIDER_URLS_ENV: &str = "RUST_API_ALLOW_PRIVATE_PROVIDER_URLS";
+
+/// 供应商主机白名单(逗号分隔,IP 字面量或域名,不区分大小写):名单内的主机
+/// 跳过私网拦截,其余私网照常拒绝。比 ALLOW_PRIVATE_PROVIDER_URLS 全局放行
+/// 精确得多——tailscale(100.64.0.0/10)/内网自建网关的推荐姿势,如
+/// `RUST_API_ALLOWED_PROVIDER_HOSTS=100.64.0.1`。
+const ALLOWED_PROVIDER_HOSTS_ENV: &str = "RUST_API_ALLOWED_PROVIDER_HOSTS";
+
+/// 逗号分隔的主机名单:trim + 小写归一,空段丢弃。
+fn env_host_list(name: &str) -> Vec<String> {
+    env_optional_string(name)
+        .map(|raw| {
+            raw.split(',')
+                .map(|item| item.trim().to_ascii_lowercase())
+                .filter(|item| !item.is_empty())
+                .collect()
+        })
+        .unwrap_or_default()
+}
 
 #[derive(Clone, Debug)]
 pub struct ProviderLimitsConfig {
@@ -50,6 +70,7 @@ pub struct MineruRuntimeConfig {
     pub bundle_retry_max_delay_secs: u64,
     pub waiting_file_grace_secs: u64,
     pub allow_private_urls: bool,
+    pub allowed_provider_hosts: Vec<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -67,6 +88,7 @@ pub struct PaddleRuntimeConfig {
     pub request_retry_base_delay_millis: u64,
     pub max_input_images: u16,
     pub allow_private_urls: bool,
+    pub allowed_provider_hosts: Vec<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -75,6 +97,7 @@ pub struct DeepSeekRuntimeConfig {
     pub balance_url: String,
     pub probe_timeout_secs: u64,
     pub allow_private_urls: bool,
+    pub allowed_provider_hosts: Vec<String>,
 }
 
 impl ProviderLimitsConfig {
@@ -149,6 +172,7 @@ impl MineruRuntimeConfig {
             bundle_retry_max_delay_secs: env_u64("RUST_API_MINERU_BUNDLE_RETRY_MAX_DELAY_SECS", 12),
             waiting_file_grace_secs: env_u64("RUST_API_MINERU_WAITING_FILE_GRACE_SECS", 90),
             allow_private_urls: env_bool(ALLOW_PRIVATE_PROVIDER_URLS_ENV, false),
+            allowed_provider_hosts: env_host_list(ALLOWED_PROVIDER_HOSTS_ENV),
         }
     }
 }
@@ -172,6 +196,7 @@ impl PaddleRuntimeConfig {
             ),
             max_input_images: env_u16("RUST_API_PADDLE_MAX_INPUT_IMAGES", 999),
             allow_private_urls: env_bool(ALLOW_PRIVATE_PROVIDER_URLS_ENV, false),
+            allowed_provider_hosts: env_host_list(ALLOWED_PROVIDER_HOSTS_ENV),
         }
     }
 }
@@ -229,6 +254,7 @@ impl DeepSeekRuntimeConfig {
             ),
             probe_timeout_secs: env_u64("RUST_API_DEEPSEEK_PROBE_TIMEOUT_SECS", 20),
             allow_private_urls: env_bool(ALLOW_PRIVATE_PROVIDER_URLS_ENV, false),
+            allowed_provider_hosts: env_host_list(ALLOWED_PROVIDER_HOSTS_ENV),
         }
     }
 }

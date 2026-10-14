@@ -176,10 +176,14 @@ impl ModelConnectionPolicy for ModelConnection {
     /// the policy check and reqwest's connection. No environment proxy is used.
     async fn addresses(&self, url: &url::Url) -> Result<Vec<SocketAddr>> {
         let host = url.host_str().unwrap_or("").trim_matches(['[', ']']);
+        // 白名单(RUST_API_ALLOWED_PROVIDER_HOSTS)暂未接入执行器链:该链是
+        // staged 内部通道(非默认路由),payload 自带 allow_private_endpoint
+        // 逃生口;默认化切换时必须同步接入,见 docs/ops/problems/20261014 体检。
         match crate::services::net_policy::resolve_pinned_addresses(
             host,
             url.port_or_known_default().unwrap_or(443),
             self.allow_private_endpoint,
+            &[],
         )
         .await
         {

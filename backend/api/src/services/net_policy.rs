@@ -44,10 +44,13 @@ pub(crate) enum ResolveError {
 /// 解析主机的**全部**地址并校验;任一地址落在保留/私有网段且未显式放行
 /// 即拒绝。返回的地址列表供 reqwest `resolve_to_addrs` 钉扎,堵住「校验
 /// 时公网、连接时被 rebinding 到内网」的窗口。
+/// 白名单(allowed_hosts)内的主机跳过公网校验,但地址钉扎照旧——
+/// 名单是部署者对「这个主机是我自己的」的显式背书,不代表放弃防 rebinding。
 pub(crate) async fn resolve_pinned_addresses(
     host: &str,
     port: u16,
     allow_private: bool,
+    allowed_hosts: &[String],
 ) -> Result<Vec<SocketAddr>, ResolveError> {
     let addresses: Vec<_> = tokio::net::lookup_host((host, port))
         .await
@@ -56,7 +59,11 @@ pub(crate) async fn resolve_pinned_addresses(
     if addresses.is_empty() {
         return Err(ResolveError::Dns("no addresses resolved".to_string()));
     }
-    if !allow_private && addresses.iter().any(|a| !is_public_ip(a.ip())) {
+    let whitelisted = allowed_hosts.iter().any(|h| h.eq_ignore_ascii_case(host));
+    if !allow_private
+        && !whitelisted
+        && addresses.iter().any(|a| !is_public_ip(a.ip()))
+    {
         return Err(ResolveError::Policy);
     }
     Ok(addresses)

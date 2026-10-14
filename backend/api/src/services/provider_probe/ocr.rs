@@ -26,8 +26,9 @@ pub(crate) async fn validate_mineru_token_view(
     let base_url = payload.base_url.trim().to_string();
     let model_version = payload.model_version.trim().to_string();
     let allow_private_urls = runtime.allow_private_urls;
+    let allowed_hosts = runtime.allowed_provider_hosts.clone();
     let client = MineruClient::with_runtime(base_url.clone(), token.to_string(), runtime);
-    validate_provider_base_url(&client.base_url, allow_private_urls)?;
+    validate_provider_base_url(&client.base_url, allow_private_urls, &allowed_hosts)?;
     let checked_at = now_iso();
 
     let view = match client
@@ -74,8 +75,9 @@ pub(crate) async fn validate_paddle_token_view(
 
     let base_url = payload.base_url.trim().to_string();
     let allow_private_urls = runtime.allow_private_urls;
+    let allowed_hosts = runtime.allowed_provider_hosts.clone();
     let client = PaddleClient::with_runtime(base_url.clone(), token.to_string(), runtime);
-    validate_provider_base_url(&client.base_url, allow_private_urls)?;
+    validate_provider_base_url(&client.base_url, allow_private_urls, &allowed_hosts)?;
     let checked_at = now_iso();
 
     let view = match client.probe_token().await {

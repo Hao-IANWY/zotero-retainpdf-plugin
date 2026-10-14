@@ -166,6 +166,13 @@ http://127.0.0.1:40001
   后端普通上传大小限制，`0` 表示不限制；当前交付包建议写成 `209715200`。
 - `RUST_API_UPLOAD_MAX_PAGES`
   后端普通上传页数限制，`0` 表示不限制；当前交付包建议写成 `300`。
+- `RUST_API_ALLOWED_PROVIDER_HOSTS`
+  供应商主机白名单（逗号分隔，IP 字面量或域名）。OCR/LLM 的 `base_url`
+  指向本机、内网或 tailscale（`100.64.0.0/10`）等保留段时，供应商探针会
+  400 拒绝（SSRF 护栏）；把自建网关的主机写进这里可精确放行，其余私网
+  照常拦截。例如 `RUST_API_ALLOWED_PROVIDER_HOSTS=100.64.0.1`。
+  另有全局开关 `RUST_API_ALLOW_PRIVATE_PROVIDER_URLS=true` 放行全部私网，
+  暴露面大，不推荐；自建网关请优先用白名单。
 
 ## 说明
 

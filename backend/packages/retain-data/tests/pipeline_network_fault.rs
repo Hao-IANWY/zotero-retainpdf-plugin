@@ -37,6 +37,7 @@ fn runtime(base_url: &str, retry_attempts: usize) -> PaddleRuntimeConfig {
         request_retry_base_delay_millis: 1,
         max_input_images: 100,
         allow_private_urls: true,
+        allowed_provider_hosts: vec![],
     }
 }
 

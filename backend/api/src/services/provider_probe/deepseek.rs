@@ -37,11 +37,16 @@ pub(crate) async fn validate_deepseek_token_view(
     }
 
     let base_url = normalize_deepseek_base_url(&payload.base_url, &runtime);
-    validate_provider_base_url(&base_url, runtime.allow_private_urls)?;
+    validate_provider_base_url(
+        &base_url,
+        runtime.allow_private_urls,
+        &runtime.allowed_provider_hosts,
+    )?;
     let checked_at = now_iso();
     let client = match build_pinned_probe_client(
         &base_url,
         runtime.allow_private_urls,
+        &runtime.allowed_provider_hosts,
         runtime.probe_timeout_secs,
     )
     .await
@@ -213,7 +218,11 @@ pub(crate) async fn query_deepseek_balance_view(
     }
 
     let base_url = normalize_deepseek_base_url(&payload.base_url, &runtime);
-    validate_provider_base_url(&base_url, runtime.allow_private_urls)?;
+    validate_provider_base_url(
+        &base_url,
+        runtime.allow_private_urls,
+        &runtime.allowed_provider_hosts,
+    )?;
     let checked_at = now_iso();
     let Some(balance_url) = deepseek_balance_url(&base_url, &runtime) else {
         return Ok(DeepSeekBalanceView {
@@ -236,6 +245,7 @@ pub(crate) async fn query_deepseek_balance_view(
     let client = match build_pinned_probe_client(
         &balance_url,
         runtime.allow_private_urls,
+        &runtime.allowed_provider_hosts,
         runtime.probe_timeout_secs,
     )
     .await
@@ -275,17 +285,19 @@ enum ProbeSetupError {
 async fn build_pinned_probe_client(
     target_url: &str,
     allow_private_urls: bool,
+    allowed_hosts: &[String],
     timeout_secs: u64,
 ) -> Result<reqwest::Client, ProbeSetupError> {
     let parsed =
         url::Url::parse(target_url).map_err(|_| ProbeSetupError::Policy)?;
     let host = parsed.host_str().ok_or(ProbeSetupError::Policy)?;
     let port = parsed.port_or_known_default().unwrap_or(443);
-    let addresses = match resolve_pinned_addresses(host, port, allow_private_urls).await {
-        Ok(addresses) => addresses,
-        Err(ResolveError::Dns(message)) => return Err(ProbeSetupError::Dns(message)),
-        Err(ResolveError::Policy) => return Err(ProbeSetupError::Policy),
-    };
+    let addresses =
+        match resolve_pinned_addresses(host, port, allow_private_urls, allowed_hosts).await {
+            Ok(addresses) => addresses,
+            Err(ResolveError::Dns(message)) => return Err(ProbeSetupError::Dns(message)),
+            Err(ResolveError::Policy) => return Err(ProbeSetupError::Policy),
+        };
     reqwest::Client::builder()
         .no_proxy()
         .redirect(reqwest::redirect::Policy::none())
