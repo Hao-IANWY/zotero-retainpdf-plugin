@@ -21,7 +21,6 @@ declare namespace _ZoteroTypes {
       "llmApiKeyCustom": string;
       "llmModelCustom": string;
       "workers": string;
-      "monitorUrl": string;
       "monitorWindow": string;
     };
   }

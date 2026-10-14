@@ -12,5 +12,4 @@ pref("llmBaseUrlCustom", "");
 pref("llmApiKeyCustom", "");
 pref("llmModelCustom", "");
 pref("workers", "5");
-pref("extensions.zotero.retainpdf.monitorUrl", "");
-pref("extensions.zotero.retainpdf.monitorWindow", "");
+pref("monitorWindow", "");

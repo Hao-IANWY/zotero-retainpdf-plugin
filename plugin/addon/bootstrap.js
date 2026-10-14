@@ -7,6 +7,31 @@
 
 var chromeHandle;
 
+/**
+ * 加载 addon/prefs.js 里的默认值到默认分支。Zotero 7 不会替插件自动加载
+ * prefs.js,不做这步的话新装用户所有默认值都是空的(服务地址默认值
+ * 不生效,getPref 拿到 undefined)。键名在构建产物里已是全前缀。
+ */
+function setDefaultPrefs(rootURI) {
+  var branch = Services.prefs.getDefaultBranch("");
+  var obj = {
+    pref(name, v) {
+      switch (typeof v) {
+        case "boolean":
+          branch.setBoolPref(name, v);
+          break;
+        case "string":
+          branch.setStringPref(name, v);
+          break;
+        case "number":
+          branch.setIntPref(name, v);
+          break;
+      }
+    },
+  };
+  Services.scriptloader.loadSubScript(rootURI + "prefs.js", obj);
+}
+
 function install(data, reason) {}
 
 async function startup({ id, version, resourceURI, rootURI }, reason) {
@@ -17,6 +42,8 @@ async function startup({ id, version, resourceURI, rootURI }, reason) {
   chromeHandle = aomStartup.registerChrome(manifestURI, [
     ["content", "__addonRef__", rootURI + "content/"],
   ]);
+
+  setDefaultPrefs(rootURI);
 
   /**
    * Global variables for plugin code.

@@ -9,8 +9,17 @@ import type { DialogHelper } from "zotero-plugin-toolkit";
  * HTML——插件不实现任何列表/详情 UI,监控台改版零跟进。web 容器同原点
  * 服务静态页与 /api/ 反代,页面内 fetch/SSE 行为与浏览器完全一致。
  *
- * 鉴权硬约束:iframe 导航注入不了自定义请求头,Cloudflare Access 公网形态
- * 此窗口天然不可用;v1 仅支持无边缘认证直连(本机/内网/tailscale)。
+ * 入口:主窗口工具栏按钮(#zotero-toolbar 注入) + 「工具」菜单兜底;
+ * 条目右键菜单不挂(翻译动作独占右键菜单,监控台与条目无关)。
+ *
+ * 地址:监控台地址就是服务地址(web 入口同原点),不开放单独配置。
+ *
+ * 两个硬约束:
+ * - browser 必须显式 type="content":Dialog 经 openDialog("about:blank")
+ *   开的是 chrome 文档,browser 默认按 chrome 权限加载,Gecko 拒绝远程
+ *   URL 以 chrome 加载,不设就是白屏。
+ * - iframe 导航注入不了自定义请求头,Cloudflare Access 公网形态此窗口
+ *   天然不可用;v1 仅支持无边缘认证直连(本机/内网/tailscale)。
  * 详情页 target=_blank 链接在此无默认行为,v1 容忍(计划风险表已接受)。
  */
 
@@ -22,34 +31,55 @@ const GEOMETRY_PREF = "monitorWindow";
 const DEFAULT_WIDTH = 1100;
 const DEFAULT_HEIGHT = 750;
 
-/** 监控台根:显式 monitorUrl 优先,留空从 serverBaseURL 推导(nginx 同原点服务静态页)。 */
+const XUL_NS = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
+const TOOLBAR_BUTTON_ID = `zotero-tb-${config.addonRef}-monitor`;
+
+/** 监控台地址即服务地址(web 入口同原点服务静态页与 /api)。 */
 function monitorRootURL(): string {
-  return (
-    (getPref("monitorUrl") as string) ||
-    (getPref("serverBaseURL") as string) ||
-    ""
-  ).replace(/\/+$/, "");
+  return ((getPref("serverBaseURL") as string) || "").replace(/\/+$/, "");
 }
 
-/** 「工具」菜单 + 条目右键菜单双入口。 */
-export function registerMonitorMenuItems() {
+/** 「工具」菜单兜底入口 + 主窗口工具栏按钮。 */
+export function registerMonitorEntry(win: _ZoteroTypes.MainWindow) {
   const open = () => void openMonitorWindow();
-  for (const menuId of ["menuTools", "item"] as const) {
-    ztoolkit.Menu.register(menuId, {
-      tag: "menuitem",
-      id: `zotero-${menuId === "item" ? "itemmenu" : "toolsmenu"}-${config.addonRef}-monitor`,
-      label: getString("menu-monitor-label"),
-      icon: `chrome://${config.addonRef}/content/icons/favicon@0.5x.png`,
-      commandListener: open,
-    });
+  ztoolkit.Menu.register("menuTools", {
+    tag: "menuitem",
+    id: `zotero-toolsmenu-${config.addonRef}-monitor`,
+    label: getString("menu-monitor-label"),
+    icon: `chrome://${config.addonRef}/content/icons/favicon@0.5x.png`,
+    commandListener: open,
+  });
+
+  // 工具栏按钮:逐窗口注入,重复进入(多窗口/重载)按 id 去重
+  const doc = win.document;
+  if (doc.getElementById(TOOLBAR_BUTTON_ID)) return;
+  const toolbar = doc.getElementById("zotero-toolbar");
+  if (!toolbar) {
+    ztoolkit.log("[monitor] #zotero-toolbar not found, toolbar entry skipped");
+    return;
   }
+  const btn = doc.createElementNS(
+    XUL_NS,
+    "toolbarbutton",
+  ) as unknown as HTMLElement;
+  btn.id = TOOLBAR_BUTTON_ID;
+  btn.classList.add("zotero-tb-button");
+  btn.setAttribute("tooltiptext", getString("monitor-window-title"));
+  btn.style.listStyleImage = `url(chrome://${config.addonRef}/content/icons/favicon@0.5x.png)`;
+  btn.addEventListener("command", open);
+  toolbar.appendChild(btn);
+}
+
+/** 窗口卸载时摘掉该窗口的工具栏按钮(菜单注册由 ztoolkit.unregisterAll 兜底)。 */
+export function removeMonitorEntry(win: Window) {
+  win.document.getElementById(TOOLBAR_BUTTON_ID)?.remove();
 }
 
 /**
  * 打开监控台窗口。开窗前先 GET 一次 index.html:serverBaseURL 直指
- * rust_api(:41000)时控制台不在那,与其开一个白窗口,不如直接给
- * 「改指 web 入口 / 填监控台地址」的可操作提示。运行中断网由 Gecko
- * 自带 neterror 页兜底(有重试按钮,非白屏)。
+ * rust_api(:41000)或被边缘认证拦截时控制台不在那,与其开一个白窗口,
+ * 不如直接给「确认服务地址指向 web 入口」的可操作提示。运行中断网由
+ * Gecko 自带 neterror 页兜底(有重试按钮,非白屏)。
  */
 export async function openMonitorWindow(): Promise<void> {
   if (dialog?.window && !dialog.window.closed) {
@@ -98,7 +128,12 @@ function buildWindow(root: string) {
       tag: "browser",
       namespace: "xul",
       id: `${config.addonRef}-monitor-browser`,
-      attributes: { flex: 1, src: `${root}/index.html` },
+      attributes: {
+        flex: 1,
+        src: `${root}/index.html`,
+        type: "content",
+        disablehistory: "true",
+      },
     },
     true,
   );

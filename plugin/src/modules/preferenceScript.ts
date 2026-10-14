@@ -6,19 +6,15 @@ import { OFFICIAL_LLM_BASE_URL } from "../api";
 /**
  * 偏好页装配。表单值经 XHTML 的 `preference` 属性与 Zotero 偏好系统双向绑定,
  * 这里负责绑定给不了的几件事:
- * 1. 密钥框注入可见性切换按钮(眼睛图标)
- * 2. 分段控件(OCR 引擎 / LLM 供应商)的选中态与偏好读写
- * 3. 由选项驱动的字段行显隐(各引擎各显各的凭据行)
- * 4. 模型下拉的初始填充与 change 持久化、模型刷新按钮装配
+ * 1. 分段控件(OCR 引擎 / LLM 供应商)的选中态与偏好读写
+ * 2. 由选项驱动的字段行显隐(各引擎各显各的凭据行)
+ * 3. 模型下拉的初始填充与 change 持久化、模型刷新按钮装配、开页自动拉取
+ * 密钥框一律明文(2026-10 老板拍板),不再注入任何显隐切换按钮。
  */
 
-// Feather 风格线性图标:密文态显示 eye(点击后可查看),明文态显示 eye-off
+// Feather 风格线性图标:模型列表刷新
 // xmlns 必须显式声明:偏好面板是 XML(XHTML) 文档,innerHTML 走 XML 解析,
 // 缺 xmlns 的 <svg> 会落入 XHTML 命名空间而非 SVG 命名空间——元素在但不渲染。
-const EYE_OPEN_SVG =
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
-const EYE_OFF_SVG =
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
 const REFRESH_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>';
 
@@ -29,29 +25,6 @@ const prefElementId = (suffix: string) =>
 
 export function registerPrefsScripts(win: Window) {
   const doc = win.document;
-
-  // ---- 密钥框可见性切换 ----
-  const secretContainers = doc.querySelectorAll(
-    ".rp-secret",
-  ) as unknown as Element[];
-  for (const container of secretContainers) {
-    const input = container.querySelector("input") as HTMLInputElement | null;
-    if (!input || container.querySelector(".rp-icon-btn")) continue;
-
-    const btn = doc.createElementNS(HTML_NS, "button") as HTMLButtonElement;
-    btn.classList.add("rp-icon-btn");
-    btn.type = "button";
-    btn.innerHTML = EYE_OPEN_SVG;
-    btn.title = getString("pref-show-key");
-    btn.addEventListener("click", () => {
-      // input 当前是密文 → 切明文;注意切换发生在 click 之前的状态判断
-      const reveal = input.type === "password";
-      input.type = reveal ? "text" : "password";
-      btn.innerHTML = reveal ? EYE_OFF_SVG : EYE_OPEN_SVG;
-      btn.title = getString(reveal ? "pref-hide-key" : "pref-show-key");
-    });
-    container.appendChild(btn);
-  }
 
   const setRowVisible = (suffix: string, visible: boolean) => {
     doc
@@ -160,25 +133,33 @@ export function registerPrefsScripts(win: Window) {
     });
   }
 
-  // ---- 模型刷新按钮:注入图标/提示,点击经 hooks 分发拉取 ----
+  // ---- 模型刷新:拉取动作的统一入口,刷新按钮与开页自动触发共用 ----
+  // onPrefsEvent 是 async:兜住编程性异常,避免 unhandled rejection 被静默吞掉
+  const triggerFetchModels = () => {
+    const pending = (Zotero as any)[
+      addon.data.config.addonInstance
+    ].hooks.onPrefsEvent("fetchModels", {
+      window: win,
+    }) as Promise<void> | undefined;
+    pending?.catch((error) =>
+      ztoolkit.log(`[prefs] fetch models crashed: ${error}`),
+    );
+  };
+
   const refreshBtn = doc.getElementById(
     prefElementId("llm-models-refresh"),
   ) as HTMLButtonElement | null;
   if (refreshBtn && !refreshBtn.innerHTML) {
     refreshBtn.innerHTML = REFRESH_SVG;
     refreshBtn.title = getString("pref-models-refresh");
-    refreshBtn.addEventListener("click", () => {
-      // onPrefsEvent 是 async:兜住编程性异常,避免 unhandled rejection 被静默吞掉
-      const pending = (Zotero as any)[
-        addon.data.config.addonInstance
-      ].hooks.onPrefsEvent("fetchModels", {
-        window: win,
-      }) as Promise<void> | undefined;
-      pending?.catch((error) =>
-        ztoolkit.log(`[prefs] fetch models crashed: ${error}`),
-      );
-    });
+    refreshBtn.addEventListener("click", triggerFetchModels);
   }
+
+  // 开页时凭据齐备就自动拉一次:下拉初始填充只有已保存值,
+  // 不主动拉就永远只有一个选项,观感等于"模型选择不可用"
+  const initialApiKey =
+    apiKeyInput?.value || (getPref("llmApiKey") as string) || "";
+  if (initialApiKey) triggerFetchModels();
 }
 
 /**

@@ -19,8 +19,15 @@ RetainPDF 的 Zotero 7+ 客户端插件（含 Zotero 10）（TypeScript，zotero
 
 - 监控台窗口（`src/modules/monitorWindow.ts`）：Dialog 非模态大窗内嵌 XUL
   `<browser>` 直接加载监控台现网 HTML——禁止在插件里重做任何监控台 UI；
-  开窗前探测 `{root}/index.html`，错址不开空窗；v1 仅支持无边缘认证直连
-  （本机/内网/tailscale），Cloudflare Access 公网形态此窗口天然不可用。
+  地址恒为 `serverBaseURL`（web 入口同原点），不开单独配置；入口是主窗口
+  工具栏按钮 +「工具」菜单，条目右键菜单不挂；`<browser>` 必须显式
+  `type="content"`（chrome 文档默认按 chrome 权限加载，远程 URL 会被 Gecko
+  静默拒绝成白屏）；开窗前探测 `{root}/index.html`，错址不开空窗；
+  v1 仅支持无边缘认证直连（本机/内网/tailscale），Cloudflare Access 公网
+  形态此窗口天然不可用。
+- 密钥输入框一律明文（`type="text"`）：Gecko 原生 reveal-password 眼睛与
+  插件注入眼睛会叠加成两只，2026-10-14 老板拍板全明文，禁止再引回
+  `type="password"` 或任何显隐切换按钮。
 - 兼容范围：manifest 必须写 `strict_max_version: "*"`——实测 Zotero 10：上限不写
   会被当未适配拒装，写死 `8.*`/`10.0.*` 又会在下个大版本拒装；`"*"` 是 Zotero
   官方测试插件的写法。`strict_min_version` 保持 6.999，兼容问题由真实 API 报告驱动修复。

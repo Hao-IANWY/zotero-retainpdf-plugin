@@ -30,8 +30,9 @@ AI Butler 的做法（与我们同为 zotero-plugin-template 底座）：`ztoolk
 - 载体：`ztoolkit.Dialog` 非模态窗口，内部撑满一个内嵌浏览器元素
   （chrome 文档内嵌远程页面的 XUL `<browser>` / `<iframe type="content">`，
   M0 真机 spike 定具体元素），src 指向 `{监控台根}/index.html`。
-- 入口：主窗口「工具」菜单 + 条目右键菜单各加「RetainPDF 监控台」（locale
-  文案随偏好页一起补）；窗口单例——已开则聚焦，不重复开。
+- 入口：主窗口工具栏按钮（`#zotero-toolbar` 注入 `toolbarbutton`）+「工具」
+  菜单兜底；条目右键菜单不挂（2026-10-14 体检修订：监控台与条目无关，
+  右键菜单留给翻译动作）。窗口单例——已开则聚焦，不重复开。
 - 尺寸：默认约 1100×750，关闭时记住窗口几何（pref 持久化）。
 - 同源零改造：iframe 内页面 origin 就是 web 容器，监控台 `runtime-config.js`
   的 `apiBase` 为空即同源，fetch/SSE 行为与浏览器完全一致，前端与插件两侧
@@ -43,12 +44,13 @@ runtime-config 注入都要重新造一遍，且前端每次改版都要跟着�
 
 ## 3. URL 解析与鉴权
 
-- 新增 pref `monitorUrl`（可选）。留空时取 `serverBaseURL` 推导：docker 交付的
-  web 容器同原点服务控制台静态页（`location /`）与 `/api/`、`/health` 反代
+- 监控台地址恒为 `serverBaseURL`（2026-10-14 体检修订：原 `monitorUrl`
+  可选 pref 已删除，不让用户单独配置）：docker 交付的 web 容器同原点服务
+  控制台静态页（`location /`）与 `/api/`、`/health` 反代
   （ops/deployment/docker/nginx.conf.template），插件指到 web/nginx 入口时
   监控台根就是 `serverBaseURL` 本身。
-- `serverBaseURL` 直指 rust_api（如 `:41000`）时控制台不在那里，加载失败，
-  窗口内错误页提示用户填 `monitorUrl` 或把 Base URL 改指 web 入口。
+- `serverBaseURL` 直指 rust_api（如 `:41000`）时控制台不在那里，探测
+  `GET /index.html` 失败，弹通知提示确认服务地址指向 web 入口。
 - 鉴权约束：iframe 导航无法注入自定义请求头，公网 Cloudflare Access
   （OTP / Service Token）形态此窗口不可用；v1 仅支持无边缘认证的直连形态
   （本机 / 内网 / tailscale）。服务端 `RUST_API_KEYS` 当前为空（匿名模式），
@@ -62,7 +64,7 @@ runtime-config 注入都要重新造一遍，且前端每次改版都要跟着�
 | 里程碑 | 内容 | 验收 | 预估 |
 |---|---|---|---|
 | M0 窗口 spike | Dialog 窗口 + 内嵌浏览器元素加载监控台 + 工具/右键菜单入口；真机验证 Zotero 7 与 10：页面加载、列表→详情跳转、SSE 进度刷新 | 窗口内看到与浏览器一致的任务列表与详情，进度实时刷新 | 0.5–1 天 |
-| M1 生命周期与兜底 | 单例聚焦、几何记忆、加载失败错误页（复用 `/health`）、`monitorUrl` 进偏好页 | 断网/错址时窗口给出可操作提示而非白屏 | 0.5 天 |
+| M1 生命周期与兜底 | 单例聚焦、几何记忆、加载失败探测提示（复用 `/health`） | 断网/错址时窗口给出可操作提示而非白屏 | 0.5 天 |
 | M2 体验收尾 | `target=_blank` 链接拦截策略（转外部浏览器或容忍）、翻译完成后 ProgressWindow 文案提示可开监控台、文档更新 | 真机验收 | 0.5 天 |
 
 与施工图 M3（批量与配置）/M4（分发）无依赖，可穿插推进。

@@ -9,5 +9,5 @@ prefs-title = RetainPDF
 menu-monitor-label = RetainPDF 监控台
 monitor-window-title = RetainPDF 监控台
 monitor-notify-no-server = 未配置服务地址，请先到 RetainPDF 设置中填写
-monitor-notify-unreachable = 监控台不可达（{ $reason }）：请检查服务是否在线；若服务地址直指后端端口，请在设置中单独填写「监控台地址」
-monitor-hint = 可在「工具 → RetainPDF 监控台」查看任务队列与详情
+monitor-notify-unreachable = 监控台不可达（{ $reason }）：请确认服务在线，且服务地址指向 web 入口（同原点静态页 + API），而非后端 API 端口或被边缘认证拦截的公网地址
+monitor-hint = 点击工具栏 RetainPDF 按钮查看任务队列与详情

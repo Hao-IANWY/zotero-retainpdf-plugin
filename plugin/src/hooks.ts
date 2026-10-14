@@ -7,7 +7,8 @@ import {
 import { registerTranslateMenuItem } from "./modules/translateMenu";
 import {
   closeMonitorWindow,
-  registerMonitorMenuItems,
+  registerMonitorEntry,
+  removeMonitorEntry,
 } from "./modules/monitorWindow";
 import { createZToolkit } from "./utils/ztoolkit";
 import { OFFICIAL_LLM_BASE_URL, RetainPdfClient } from "./api";
@@ -20,22 +21,6 @@ async function onStartup() {
   ]);
 
   initLocale();
-
-  // Gecko(Firefox 112+)默认在每个密码框内部渲染原生"显示密码"眼睛,和偏好页
-  // 插件注入的外围眼睛叠成两只。CSS 够不到 UA shadow DOM,只能关平台默认;
-  // Zotero 自身几乎没有密码框,仅少一个显隐按钮,无其它副作用。
-  try {
-    const { Services } = (globalThis as any).ChromeUtils.importESModule(
-      "resource://gre/modules/Services.sys.mjs",
-    );
-    Services.prefs.setBoolPref(
-      "layout.forms.reveal-password-button.enabled",
-      false,
-    );
-  } catch (error) {
-    // 老内核没有该 pref 或导入失败:退化为两只眼睛并存,不影响其余功能
-    ztoolkit.log(`[startup] disable native reveal-password failed: ${error}`);
-  }
 
   // 注册偏好面板：不调用这步,Zotero 设置里不会出现本插件的入口。
   // 样式表必须经 stylesheets 参数注入——pane 文档不会处理 linkset 里的
@@ -64,10 +49,11 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
   );
 
   registerTranslateMenuItem(win);
-  registerMonitorMenuItems();
+  registerMonitorEntry(win);
 }
 
 async function onMainWindowUnload(win: Window): Promise<void> {
+  removeMonitorEntry(win);
   ztoolkit.unregisterAll();
 }
 
