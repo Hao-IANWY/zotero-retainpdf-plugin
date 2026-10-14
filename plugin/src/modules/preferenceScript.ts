@@ -59,6 +59,9 @@ export function registerPrefsScripts(win: Window) {
   const modelSelect = doc.getElementById(
     prefElementId("llm-model"),
   ) as HTMLSelectElement | null;
+  const workersInput = doc.getElementById(
+    prefElementId("workers"),
+  ) as HTMLInputElement | null;
 
   // 历史值 "official" 与缺省都归一到 deepseek 分支
   const llmApiMode = getPref("llmApiMode") === "custom" ? "custom" : "deepseek";
@@ -67,9 +70,10 @@ export function registerPrefsScripts(win: Window) {
     setRowVisible("llm-base-url-custom-row", mode === "custom");
   };
 
-  // 各供应商配置分槽存档:切换时先把当前值压回旧供应商槽位,再从新供应商
-  // 槽位恢复(从未配置过则恢复为空,呈现未输入态)。生效键
-  // (llmBaseUrl/llmApiKey/llmModel)仍是任务发起与连接检查的唯一读取口。
+  // 各供应商配置分槽存档(含并发数):切换时先把当前值压回旧供应商槽位,
+  // 再从新供应商槽位恢复(凭据/模型从未配置过则恢复为空,呈现未输入态;
+  // 并发数空槽回落默认 5,保证数字框不空)。生效键
+  // (llmBaseUrl/llmApiKey/llmModel/workers)仍是任务发起与连接检查的唯一读取口。
   initSegment(doc, prefElementId("llm-mode"), llmApiMode, (value) => {
     const prev = getPref("llmApiMode") === "custom" ? "custom" : "deepseek";
     // 读 DOM 而非偏好:输入框的绑定写回发生在失焦时,点击瞬间偏好可能滞后
@@ -77,14 +81,17 @@ export function registerPrefsScripts(win: Window) {
       baseUrl: baseUrlInput?.value ?? "",
       apiKey: apiKeyInput?.value ?? "",
       model: modelSelect?.value ?? "",
+      workers: workersInput?.value ?? "",
     };
     if (prev === "deepseek") {
       setPref("llmApiKeyDeepseek", current.apiKey);
       setPref("llmModelDeepseek", current.model);
+      setPref("workersDeepseek", current.workers || "5");
     } else {
       setPref("llmBaseUrlCustom", current.baseUrl);
       setPref("llmApiKeyCustom", current.apiKey);
       setPref("llmModelCustom", current.model);
+      setPref("workersCustom", current.workers || "5");
     }
     const restored = {
       baseUrl: value === "custom" ? getPref("llmBaseUrlCustom") || "" : "",
@@ -96,12 +103,18 @@ export function registerPrefsScripts(win: Window) {
         (value === "custom"
           ? getPref("llmModelCustom")
           : getPref("llmModelDeepseek")) || "",
+      workers:
+        (value === "custom"
+          ? getPref("workersCustom")
+          : getPref("workersDeepseek")) || "5",
     };
     if (apiKeyInput) apiKeyInput.value = restored.apiKey;
     if (baseUrlInput) baseUrlInput.value = restored.baseUrl;
+    if (workersInput) workersInput.value = restored.workers;
     setPref("llmApiKey", restored.apiKey);
     setPref("llmBaseUrl", restored.baseUrl);
     setPref("llmModel", restored.model);
+    setPref("workers", restored.workers);
     if (modelSelect) {
       fillModelOptions(
         modelSelect,

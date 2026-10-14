@@ -12,4 +12,6 @@ pref("llmBaseUrlCustom", "");
 pref("llmApiKeyCustom", "");
 pref("llmModelCustom", "");
 pref("workers", "5");
+pref("workersDeepseek", "5");
+pref("workersCustom", "5");
 pref("monitorWindow", "");
