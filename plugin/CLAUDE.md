@@ -17,14 +17,14 @@ RetainPDF 的 Zotero 7+ 客户端插件（含 Zotero 10）（TypeScript，zotero
   （官方 DeepSeek 预置 / 自定义）在偏好页做成分段选项，凭据/模型/并发随任务携带
   （prefs 前置）。
 
-- 监控台窗口（`src/modules/monitorWindow.ts`）：Dialog 非模态大窗内嵌 XUL
-  `<browser>` 直接加载监控台现网 HTML——禁止在插件里重做任何监控台 UI；
-  地址恒为 `serverBaseURL`（web 入口同原点），不开单独配置；唯一入口 =
-  搜索栏右侧按钮（`#zotero-items-toolbar` 注入，`zotero-tb-search` 右邻；
-  Zotero 7 没有 `#zotero-toolbar`，菜单一律不挂）；`<browser>` 必须显式
-  `type="content"`（chrome 文档默认按 chrome 权限加载，远程 URL 会被 Gecko
-  静默拒绝成白屏）且 Dialog 的 about:blank 文档要补 `html,body{height:100%}`
-  + browser 用 vw/vh（XUL flex 链对塌缩 body 算百分比会归零）；
+- 监控台窗口（`src/modules/monitorWindow.ts`）：Dialog 非模态大窗内嵌 HTML
+  `<iframe>` 直接加载监控台现网 HTML——禁止在插件里重做任何监控台 UI；
+  载体必须是 iframe 不是 XUL `<browser>`（about:blank HTML 文档里 browser
+  的 frame loader 不可靠，连踩三坑后于 2026-10-14 定案 iframe）；
+  Dialog 的 about:blank 文档要补 `html,body{height:100%}` + iframe 用 vw/vh
+  （父链高度会塌）；地址恒为 `serverBaseURL`（web 入口同原点），不开单独
+  配置；唯一入口 = 搜索栏右侧按钮（`#zotero-items-toolbar` 注入，
+  `zotero-tb-search` 右邻；Zotero 7 没有 `#zotero-toolbar`，菜单一律不挂）；
   开窗前探测 `{root}/index.html`，错址不开空窗；
   v1 仅支持无边缘认证直连（本机/内网/tailscale），Cloudflare Access 公网
   形态此窗口天然不可用。

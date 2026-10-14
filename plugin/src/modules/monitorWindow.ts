@@ -6,21 +6,21 @@ import type { DialogHelper } from "zotero-plugin-toolkit";
 
 /**
  * RetainPDF 监控台窗口(docs/ops/planning/zotero-monitor-window.md)。
- * 形态:ztoolkit.Dialog 非模态大窗内嵌 XUL <browser> 直接加载监控台现网
+ * 形态:ztoolkit.Dialog 非模态大窗内嵌 HTML <iframe> 直接加载监控台现网
  * HTML——插件不实现任何列表/详情 UI,监控台改版零跟进。web 容器同原点
  * 服务静态页与 /api/ 反代,页面内 fetch/SSE 行为与浏览器完全一致。
  *
- * 入口:主窗口工具栏按钮(#zotero-toolbar 注入) + 「工具」菜单兜底;
- * 条目右键菜单不挂(翻译动作独占右键菜单,监控台与条目无关)。
+ * 载体定案(2026-10-14):iframe 取代 XUL <browser>。Dialog 的窗口是
+ * about:blank HTML 文档,XUL browser 在其中连踩两坑(默认 chrome 权限
+ * 拒载远程 URL;flex 高度链塌缩归零)后仍白屏,frame loader 创建时机在
+ * HTML 文档里不可靠。iframe 是 HTML 原生元素,零玄学。
  *
- * 地址:监控台地址就是服务地址(web 入口同原点),不开放单独配置。
+ * 入口:唯一入口 = 搜索栏右侧按钮(#zotero-items-toolbar 注入),
+ * 菜单一律不挂。地址:监控台地址就是服务地址(web 入口同原点),不开放
+ * 单独配置。
  *
- * 两个硬约束:
- * - browser 必须显式 type="content":Dialog 经 openDialog("about:blank")
- *   开的是 chrome 文档,browser 默认按 chrome 权限加载,Gecko 拒绝远程
- *   URL 以 chrome 加载,不设就是白屏。
- * - iframe 导航注入不了自定义请求头,Cloudflare Access 公网形态此窗口
- *   天然不可用;v1 仅支持无边缘认证直连(本机/内网/tailscale)。
+ * 硬约束:iframe 导航注入不了自定义请求头,Cloudflare Access 公网形态
+ * 此窗口天然不可用;v1 仅支持无边缘认证直连(本机/内网/tailscale)。
  * 详情页 target=_blank 链接在此无默认行为,v1 容忍(计划风险表已接受)。
  */
 
@@ -186,47 +186,63 @@ export function closeMonitorWindow() {
 function buildWindow(root: string) {
   const geo = loadGeometry();
   const next = new ztoolkit.Dialog(1, 1);
+  // 载体用 HTML iframe 而非 XUL <browser>:Dialog 开的是 about:blank HTML
+  // 文档,XUL browser 在其中连踩两坑(默认 chrome 权限拒载远程 URL →
+  // type="content";flex 高度链塌缩 → vw/vh)后仍白屏——frame loader 的创建
+  // 时机在 HTML 文档里不可靠。iframe 是 HTML 原生元素,在 chrome 文档里
+  // 加载远程页面零玄学,better-notes 等插件的同构做法。
+  const frameId = `${config.addonRef}-monitor-browser`;
   next.addCell(
     0,
     0,
     {
-      tag: "browser",
-      namespace: "xul",
-      id: `${config.addonRef}-monitor-browser`,
-      attributes: {
-        type: "content",
-        disablehistory: "true",
-        flex: 1,
-        src: `${root}/index.html`,
+      tag: "iframe",
+      namespace: "html",
+      id: frameId,
+      attributes: { src: `${root}/index.html` },
+      styles: {
+        width: "100vw",
+        height: "100vh",
+        border: "none",
+        display: "block",
       },
-      // Dialog 的 about:blank body 高度链会塌(v0.1.8 白屏根因),
-      // vw/vh 视口单位不依赖父链,与 loadCallback 注入的 CSS 双保险
-      styles: { width: "100vw", height: "100vh" },
+      listeners: [
+        {
+          type: "load",
+          listener: () => void appendPluginLog("[monitor] iframe load fired"),
+        },
+        {
+          type: "error",
+          listener: () => void appendPluginLog("[monitor] iframe error event"),
+        },
+      ],
     },
     true,
   );
+  // 加载看门狗:15s 还没 load 就在日志里点名"卡死",和"加载了但白屏"区分开
+  const watchdog = setTimeout(() => {
+    void appendPluginLog("[monitor] iframe load watchdog expired (15s, no load)");
+  }, 15000);
   next.setDialogData({
     loadCallback: () => {
       const d = next.window?.document;
       if (!d) return;
-      // Dialog 的 about:blank 文档 html/body 无显式高度:XUL flex 相对
-      // 塌缩的 body,browser 又无内在尺寸,最终高度归零(窗口在白屏)。
+      // Dialog 的 about:blank 文档 html/body 无显式高度,100% 链会塌,
       // 补齐高度链;body 默认 margin 也要清掉,否则 vw/vh 撑出滚动条。
       const styleEl = d.createElement("style");
       styleEl.textContent = "html, body { height: 100%; margin: 0; padding: 0; }";
       (d.head ?? d.documentElement)?.appendChild(styleEl);
-      // content 文档的 load 不冒泡出 browser 边界,必须 capture 才捕得到
-      d.getElementById(`${config.addonRef}-monitor-browser`)
-        ?.addEventListener(
-          "load",
-          () => void appendPluginLog("[monitor] browser load fired"),
-          true,
-        );
+      const frame = d.getElementById(frameId);
+      frame?.addEventListener("load", () => {
+        clearTimeout(watchdog);
+        void appendPluginLog("[monitor] iframe load fired (capture)");
+      });
       void appendPluginLog("[monitor] window DOM ready, style injected");
     },
     // beforeUnload 时窗口尚在、元素仍可访问:此刻读几何最可靠
     beforeUnloadCallback: saveGeometry,
     unloadCallback: () => {
+      clearTimeout(watchdog);
       dialog = null;
     },
   });
