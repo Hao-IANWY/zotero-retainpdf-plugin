@@ -51,9 +51,10 @@ export function registerMonitorEntry(win: _ZoteroTypes.MainWindow) {
     commandListener: open,
   });
 
-  // 按钮注入到 #zotero-items-toolbar 末尾——Zotero 7 主窗口条目工具栏里
-  // spacer 之后的搜索区(搜索框 #zotero-tb-search 的父容器),即老板钦定的
-  // 搜索栏右侧位置;逐层回退防 Zotero 改版。逐窗口注入,按 id 去重。
+  // 按钮注入 #zotero-items-toolbar(Zotero 7 条目工具栏,搜索框所在 hbox),
+  // 紧贴搜索框右侧(insertBefore searchBox.nextSibling)——appendChild 在
+  // Zotero 7.1+ 会落到堆叠模式切换按钮之后,偏离老板钦定位置。
+  // 逐层回退防 Zotero 改版;逐窗口注入,按 id 去重。
   const doc = win.document;
   if (doc.getElementById(TOOLBAR_BUTTON_ID)) return;
   const anchor =
@@ -62,7 +63,7 @@ export function registerMonitorEntry(win: _ZoteroTypes.MainWindow) {
     doc.getElementById("zotero-toolbar-item-tree");
   if (!anchor) {
     void appendPluginLog(
-      "[monitor] neither #zotero-tb-search nor #zotero-toolbar found, button skipped",
+      "[monitor] neither #zotero-items-toolbar nor fallback found, button skipped",
     );
     return;
   }
@@ -79,7 +80,12 @@ export function registerMonitorEntry(win: _ZoteroTypes.MainWindow) {
   btn.setAttribute("image", iconUrl);
   btn.style.listStyleImage = `url(${iconUrl})`;
   btn.addEventListener("command", open);
-  anchor.appendChild(btn);
+  const searchBox = doc.getElementById("zotero-tb-search");
+  const before =
+    searchBox && searchBox.parentElement === anchor
+      ? searchBox.nextSibling
+      : null;
+  anchor.insertBefore(btn, before);
   void appendPluginLog(
     `[monitor] toolbar button injected under #${anchor.id || anchor.tagName}`,
   );
