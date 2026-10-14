@@ -1,9 +1,9 @@
 # Zotero 插件施工图（路线 A）
 
 > 状态：规划中 · 2026-10-11 立项
-> 决策依据：[ADR 0007](../../adr/0007-own-zotero-plugin.md)。UX 与产物语义参考
+> 决策依据：[ADR 0007](../../../adr/0007-own-zotero-plugin.md)。UX 与产物语义参考
 > [路线 B 文档 §3](./zotero-pdf2zh-protocol-emulation.md)（上游行为逆向成果）。
-> API 契约以 [docs/api/](../../api/README.md) 为准，本文不另立字段定义。
+> API 契约以 [docs/api/](../../../api/README.md) 为准，本文不另立字段定义。
 
 ## 1. 产品流程
 

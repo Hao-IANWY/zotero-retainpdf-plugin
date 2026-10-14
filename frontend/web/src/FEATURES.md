@@ -95,4 +95,4 @@ features/<功能>/
 
 `src/` 曾长期是 `js/` + `pages/` 的双树结构。2026-09 的批次 1–5 重组为四层；
 2026-10 网页端收缩为任务状态两页，图书馆/阅读器/凭据等功能随桌面端一并退役，
-迁移记录见 `docs/ops/planning/frontend-migration/feature-layout-blueprint.md`。
+迁移记录见 `docs/ops/planning/completed/frontend-migration/feature-layout-blueprint.md`。

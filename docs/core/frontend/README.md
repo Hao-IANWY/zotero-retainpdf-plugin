@@ -9,7 +9,7 @@ Zotero 插件（plugin/）。
 - [统一 React SPA 目标架构](./spa-architecture.md)（历史设计存档）
 - [主题皮肤系统](./theme-system/THEME_SYSTEM.md)
 - [历史前端优化记录](../../ops/reports/frontend-optimization-notes.md)
-- [React 迁移计划与审计](../../ops/planning/frontend-migration/)（历史存档）
+- [React 迁移计划与审计](../../ops/planning/completed/frontend-migration/)（历史存档）
 - [前端状态 Smoke 最新报告](../../ops/reports/frontend-status-smoke-latest.json)
 
 主要代码入口：

@@ -354,4 +354,4 @@ mock 模式（`?mock=demo`）渲染与迁移前一致。
 - [前端迁移计划与审计](./README.md)
 - [遗留树可达性审计](./legacy-audit.md)
 - [Rust API 业务目录与边界统一迁移计划](../api-boundary-migration.md)（同类工作的体例参考）
-- [前端主线文档](../../../core/frontend/README.md)
+- [前端主线文档](../../../../core/frontend/README.md)

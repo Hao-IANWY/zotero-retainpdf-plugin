@@ -361,7 +361,7 @@ git diff --check
 
 ## 10. 关联文档
 
-- [工程规划索引](README.md)
-- [Rust API 架构入口](../../core/rust_api/README.md)
-- [Rust API 实现文档](../../../backend/api/docs/README.md)
-- [既有仓库职责目录迁移记录](../reports/repository-layout-migration.md)
+- [工程规划索引](../README.md)
+- [Rust API 架构入口](../../../core/rust_api/README.md)
+- [Rust API 实现文档](../../../../backend/api/docs/README.md)
+- [既有仓库职责目录迁移记录](../../reports/repository-layout-migration.md)

@@ -5,7 +5,7 @@
 ## 入口
 
 - [工程规划与台账](./planning/README.md)
-- [前端迁移计划与审计](./planning/frontend-migration/)
+- [前端迁移计划与审计](./planning/completed/frontend-migration/)
 - [生成报告](./reports/README.md)
 - [历史问题与复盘](./problems/)
 

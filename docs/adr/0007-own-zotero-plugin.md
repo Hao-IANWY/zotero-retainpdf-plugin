@@ -1,7 +1,7 @@
 # 0007 自研 Zotero 插件
 
 > 状态：已采纳（2026-10-11）。**取代同日路线 B（协议模拟）**，原规划见
-> [zotero-pdf2zh-protocol-emulation.md](../ops/planning/zotero-pdf2zh-protocol-emulation.md)。
+> [zotero-pdf2zh-protocol-emulation.md](../ops/planning/completed/zotero-pdf2zh-protocol-emulation.md)。
 > 执行未开始，里程碑与部署形态规划将建于 ops/planning/。
 
 ## 1. 背景

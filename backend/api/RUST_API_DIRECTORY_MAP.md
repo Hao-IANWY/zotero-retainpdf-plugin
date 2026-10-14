@@ -125,7 +125,7 @@ jobs 的依赖装配由 `app/jobs.rs` 完成；依赖定义在 `services/jobs/de
 - `ai` 的 `gateway` 持有 HTTP 客户端和启动配置；`api` 处理 HTTP/SSE 适配。
   `AppState` 装配共享网关，健康状态来源仍由现有监督器提供，本轮没有迁移监督器。
 - 迁移状态及后续批次见
-  [业务目录与边界统一迁移计划](../../docs/ops/planning/api-boundary-migration.md)。
+  [业务目录与边界统一迁移计划](../../docs/ops/planning/completed/api-boundary-migration.md)。
 
 #### `src/services/jobs/facade`
 

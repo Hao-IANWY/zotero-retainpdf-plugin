@@ -15,7 +15,7 @@ from devtools.architecture_checks.common import scan_py_files
 #
 # 背景:ocr / translate / render 三个阶段之间禁止互相 import,阶段边界上共享的
 # 读写契约因此是**照抄一份文件**(见 render/README.md「阶段边界」、
-# docs/ops/planning/architecture_tasks.csv 的 DEC-001)。复制是有意设计,不要合并。
+# docs/ops/planning/completed/architecture_tasks.csv 的 DEC-001)。复制是有意设计,不要合并。
 #
 # 但复制没有编译期约束:translate 往 build_translation_record 里加一个字段、
 # render 那份忘了加,两边照样能 import、照样能跑,只是 render 永远读不到这个新字段,

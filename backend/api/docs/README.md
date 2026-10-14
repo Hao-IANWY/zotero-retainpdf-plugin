@@ -20,7 +20,7 @@ Rust API 的详细实现契约按领域维护在：
 - [OCR Provider 契约](../OCR_PROVIDER_CONTRACT.md)
 - [渲染参数契约](../RENDER_OPTIONS_CONTRACT.md)
 - [目录边界](../RUST_API_DIRECTORY_MAP.md)
-- [业务目录与边界统一迁移计划与执行状态](../../../docs/ops/planning/api-boundary-migration.md)
+- [业务目录与边界统一迁移计划与执行状态](../../../docs/ops/planning/completed/api-boundary-migration.md)
 
 原则：
 

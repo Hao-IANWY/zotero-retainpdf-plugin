@@ -1,6 +1,6 @@
 # 0006 移除 AI 问答，产品专注文献翻译
 
-> 状态：已执行（2026-10-11 采纳，2026-10-12 六阶段全部落地，见 ops/planning/ai-chat-removal.md）。
+> 状态：已执行（2026-10-11 采纳，2026-10-12 六阶段全部落地，见 ops/planning/completed/ai-chat-removal.md）。
 > 触发动机：产品定位收敛——retain-pdf 的核心价值是排版保留的文献翻译，
 > AI 问答（阅读器整本问答、PDF operation、fx-terminal）是旁支，且贯穿全栈，
 > 每条主线改动都要为它支付兼容与维护成本。
