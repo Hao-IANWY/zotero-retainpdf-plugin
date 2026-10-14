@@ -252,7 +252,9 @@ impl DeepSeekRuntimeConfig {
                 "RUST_API_DEEPSEEK_BALANCE_URL",
                 "https://api.deepseek.com/user/balance",
             ),
-            probe_timeout_secs: env_u64("RUST_API_DEEPSEEK_PROBE_TIMEOUT_SECS", 20),
+            // 默认 60s:思考型模型(qwen3 等)上游首响应实测可达 45s,20s 会把
+            // 慢而可用的网关误报成不可用;探针是用户手动触发的检查,等得起。
+            probe_timeout_secs: env_u64("RUST_API_DEEPSEEK_PROBE_TIMEOUT_SECS", 60),
             allow_private_urls: env_bool(ALLOW_PRIVATE_PROVIDER_URLS_ENV, false),
             allowed_provider_hosts: env_host_list(ALLOWED_PROVIDER_HOSTS_ENV),
         }

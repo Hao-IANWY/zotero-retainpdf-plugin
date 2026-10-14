@@ -440,32 +440,57 @@ fn classify_deepseek_probe_transport_error(
     base_url: String,
     checked_at: String,
 ) -> MineruTokenValidationView {
-    let error_text = err.to_string();
+    let error_text = describe_reqwest_error(&err);
     let lowered = error_text.to_lowercase();
-    let (status, summary) = if lowered.contains("timed out")
-        || lowered.contains("timeout")
-        || lowered.contains("failed to resolve")
+    // reqwest 0.12 的顶层 Display 只有 "error sending request for url (...)",
+    // 原因在 source 链——字符串匹配顶层文本永远落空(2026-10-14 老板网关 45s
+    // 首响应超时被误报成"Key 校验失败")。分类必须先用结构化的 is_* 判定。
+    let (status, summary, operator_hint) = if err.is_timeout() {
+        (
+            "network_error",
+            "翻译 API 响应超时".to_string(),
+            Some(
+                "网关已接单但上游模型首响应过慢。翻译链路的超时更宽,可能仍可用;\
+                 也可调大 RUST_API_DEEPSEEK_PROBE_TIMEOUT_SECS 或换响应更快的模型。"
+                    .to_string(),
+            ),
+        )
+    } else if err.is_connect()
         || lowered.contains("dns")
+        || lowered.contains("failed to resolve")
         || lowered.contains("connection")
         || lowered.contains("connect")
     {
-        ("network_error", "翻译 API 连通性校验失败")
+        ("network_error", "翻译 API 连通性校验失败".to_string(), None)
     } else {
-        ("provider_error", "翻译 API Key 校验失败")
+        ("provider_error", "翻译 API Key 校验失败".to_string(), None)
     };
 
     MineruTokenValidationView {
         ok: false,
         status,
-        summary: summary.to_string(),
+        summary,
         retryable: true,
         provider_code: None,
         provider_message: Some(error_text),
-        operator_hint: None,
+        operator_hint,
         trace_id: None,
         base_url,
         checked_at,
     }
+}
+
+/// reqwest 错误全链描述:顶层 Display 只到 url,根因(hyper/超时/连接拒绝)
+/// 在 source 链上,逐层拼进 provider_message 供状态行与日志定位。
+fn describe_reqwest_error(err: &reqwest::Error) -> String {
+    let mut text = err.to_string();
+    let mut source = std::error::Error::source(err);
+    while let Some(cause) = source {
+        text.push_str(" <- ");
+        text.push_str(&cause.to_string());
+        source = cause.source();
+    }
+    text
 }
 
 fn summarize_deepseek_models_payload(body_text: &str) -> Option<String> {
