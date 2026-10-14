@@ -6,7 +6,6 @@ menu-stage-uploading = 上传原文…
 menu-done = 已挂回：{ $name }（mono + 双语对照）
 menu-fail = 失败：{ $reason }
 prefs-title = RetainPDF
-menu-monitor-label = RetainPDF 监控台
 monitor-window-title = RetainPDF 监控台
 monitor-notify-no-server = 未配置服务地址，请先到 RetainPDF 设置中填写
 monitor-notify-unreachable = 监控台不可达（{ $reason }）：请确认服务在线且地址指向 web 入口；若 Zotero 配置了网络代理，请将服务地址加入直连例外

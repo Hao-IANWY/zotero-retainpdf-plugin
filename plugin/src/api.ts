@@ -23,6 +23,27 @@ function describeNetError(error: unknown): string {
 }
 
 /**
+ * Zotero.HTTP 对非 2xx 直接抛 UnexpectedStatusException,后端信封
+ * {code,message} 在 xmlhttp.responseText 里——把后端人话带出来
+ * (如私网策略 400 的 "private targets require explicit opt-in"),
+ * 而不是只报个状态码让用户猜。
+ */
+function describeHttpFailure(error: unknown): string {
+  const xmlhttp = (error as any)?.xmlhttp;
+  const status = xmlhttp?.status;
+  const responseText = xmlhttp?.responseText;
+  if (typeof responseText === "string" && responseText.trim()) {
+    try {
+      const body = JSON.parse(responseText);
+      if (body?.message) return `HTTP ${status}: ${body.message}`;
+    } catch {
+      // 非 JSON 响应体,落回通用描述
+    }
+  }
+  return describeNetError(error);
+}
+
+/**
  * RetainPDF 服务端 API 客户端。
  *
  * 消费纪律(与 docs/api/README 对齐):
@@ -53,7 +74,7 @@ export class RetainPdfClient {
       const version = response.response?.version ?? "";
       return version;
     } catch (error) {
-      throw new Error(describeNetError(error));
+      throw new Error(describeHttpFailure(error));
     }
   }
 
@@ -105,7 +126,7 @@ export class RetainPdfClient {
       }
       body = response.response;
     } catch (error) {
-      throw new Error(describeNetError(error));
+      throw new Error(describeHttpFailure(error));
     }
     if (body?.code !== 0) {
       throw new Error(body?.message || `code ${body?.code}`);
@@ -135,7 +156,7 @@ export class RetainPdfClient {
       }
       body = response.response;
     } catch (error) {
-      throw new Error(describeNetError(error));
+      throw new Error(describeHttpFailure(error));
     }
     const list = Array.isArray(body?.data) ? body.data : [];
     const ids = list

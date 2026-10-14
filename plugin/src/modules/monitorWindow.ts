@@ -40,17 +40,9 @@ function monitorRootURL(): string {
   return ((getPref("serverBaseURL") as string) || "").replace(/\/+$/, "");
 }
 
-/** 「工具」菜单兜底入口 + 搜索栏右侧按钮(老板钦定位置)。 */
+/** 唯一入口:搜索栏右侧按钮(老板钦定)。工具/右键菜单均不挂。 */
 export function registerMonitorEntry(win: _ZoteroTypes.MainWindow) {
   const open = () => void openMonitorWindow();
-  ztoolkit.Menu.register("menuTools", {
-    tag: "menuitem",
-    id: `zotero-toolsmenu-${config.addonRef}-monitor`,
-    label: getString("menu-monitor-label"),
-    icon: `chrome://${config.addonRef}/content/icons/favicon@0.5x.png`,
-    commandListener: open,
-  });
-
   // 按钮注入 #zotero-items-toolbar(Zotero 7 条目工具栏,搜索框所在 hbox),
   // 紧贴搜索框右侧(insertBefore searchBox.nextSibling)——appendChild 在
   // Zotero 7.1+ 会落到堆叠模式切换按钮之后,偏离老板钦定位置。
@@ -207,21 +199,31 @@ function buildWindow(root: string) {
         flex: 1,
         src: `${root}/index.html`,
       },
-      // browser 内部加载成败不进 Dialog 的回调——白屏还是没白屏,全靠这两个事件分辨
-      listeners: [
-        {
-          type: "load",
-          listener: () => void appendPluginLog("[monitor] browser load fired"),
-        },
-        {
-          type: "error",
-          listener: () => void appendPluginLog("[monitor] browser error event"),
-        },
-      ],
+      // Dialog 的 about:blank body 高度链会塌(v0.1.8 白屏根因),
+      // vw/vh 视口单位不依赖父链,与 loadCallback 注入的 CSS 双保险
+      styles: { width: "100vw", height: "100vh" },
     },
     true,
   );
   next.setDialogData({
+    loadCallback: () => {
+      const d = next.window?.document;
+      if (!d) return;
+      // Dialog 的 about:blank 文档 html/body 无显式高度:XUL flex 相对
+      // 塌缩的 body,browser 又无内在尺寸,最终高度归零(窗口在白屏)。
+      // 补齐高度链;body 默认 margin 也要清掉,否则 vw/vh 撑出滚动条。
+      const styleEl = d.createElement("style");
+      styleEl.textContent = "html, body { height: 100%; margin: 0; padding: 0; }";
+      (d.head ?? d.documentElement)?.appendChild(styleEl);
+      // content 文档的 load 不冒泡出 browser 边界,必须 capture 才捕得到
+      d.getElementById(`${config.addonRef}-monitor-browser`)
+        ?.addEventListener(
+          "load",
+          () => void appendPluginLog("[monitor] browser load fired"),
+          true,
+        );
+      void appendPluginLog("[monitor] window DOM ready, style injected");
+    },
     // beforeUnload 时窗口尚在、元素仍可访问:此刻读几何最可靠
     beforeUnloadCallback: saveGeometry,
     unloadCallback: () => {

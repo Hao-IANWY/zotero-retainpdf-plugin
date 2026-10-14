@@ -6,7 +6,6 @@ export type FluentMessageId =
   | 'menu-done'
   | 'menu-fail'
   | 'menu-fail-config'
-  | 'menu-monitor-label'
   | 'menu-no-pdf'
   | 'menu-stage-uploading'
   | 'menu-translate-label'

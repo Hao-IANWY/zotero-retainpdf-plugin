@@ -6,7 +6,6 @@ menu-stage-uploading = Uploading source…
 menu-done = Attached: { $name } (mono + side-by-side)
 menu-fail = Failed: { $reason }
 prefs-title = RetainPDF
-menu-monitor-label = RetainPDF Monitor
 monitor-window-title = RetainPDF Monitor
 monitor-notify-no-server = No server URL configured. Fill it in RetainPDF preferences first
 monitor-notify-unreachable = Monitor unreachable ({ $reason }): make sure the service is up and the URL points at the web entry; if Zotero uses a network proxy, add the server address to the bypass list
