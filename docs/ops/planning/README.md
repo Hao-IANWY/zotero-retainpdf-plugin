@@ -5,7 +5,8 @@
 
 ## 进行中
 
-- [Zotero 插件内嵌监控台窗口](./zotero-monitor-window.md)（2026-10-14 立项）
+- [Zotero 插件原生中控台：嵌入路线探索报告与页面方案](./zotero-native-dashboard.md)（2026-10-14 立项；接替嵌入路线）
+- [Zotero 插件内嵌监控台窗口](./zotero-monitor-window.md)（2026-10-14 立项；嵌入路线探索已收口定格，由原生中控台接替）
 
 ## 已完成与历史存档
 
