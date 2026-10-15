@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+  <style>
+    .m {
+      fill: none;
+      stroke: #26221b;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    @media (prefers-color-scheme: dark) {
+      .m {
+        stroke: #e8e6e3;
+      }
+    }
+  </style>
+  <rect class="m" x="2.4" y="2.4" width="11.2" height="11.2" rx="3"/>
+  <path class="m" d="M4.6 8.5h1.6l1-2.2 1.7 4.3 1-2.1h1.5"/>
+</svg>

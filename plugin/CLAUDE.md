@@ -17,17 +17,21 @@ RetainPDF 的 Zotero 7+ 客户端插件（含 Zotero 10）（TypeScript，zotero
   （官方 DeepSeek 预置 / 自定义）在偏好页做成分段选项，凭据/模型/并发随任务携带
   （prefs 前置）。
 
-- 监控台窗口（`src/modules/monitorWindow.ts`）：Dialog 非模态大窗内嵌 HTML
-  `<iframe>` 直接加载监控台现网 HTML——禁止在插件里重做任何监控台 UI；
-  载体必须是 iframe 不是 XUL `<browser>`（about:blank HTML 文档里 browser
-  的 frame loader 不可靠，连踩三坑后于 2026-10-14 定案 iframe）；
-  Dialog 的 about:blank 文档要补 `html,body{height:100%}` + iframe 用 vw/vh
-  （父链高度会塌）；地址恒为 `serverBaseURL`（web 入口同原点），不开单独
-  配置；唯一入口 = 搜索栏右侧按钮（`#zotero-items-toolbar` 注入，
-  `zotero-tb-search` 右邻；Zotero 7 没有 `#zotero-toolbar`，菜单一律不挂）；
-  开窗前探测 `{root}/index.html`，错址不开空窗；
-  v1 仅支持无边缘认证直连（本机/内网/tailscale），Cloudflare Access 公网
-  形态此窗口天然不可用。
+- 中控台窗口（`src/modules/dashboardWindow.ts` + `dashboardScript.ts` +
+  `addon/content/dashboard/`）：原生页面路线——`openDialog` 直开 chrome://
+  自带 `dashboard.xhtml`（preferences.xhtml 同管线），数据走
+  `RetainPdfClient.listJobs` + SSE，**不再内嵌现网监控台 HTML**（iframe 路线
+  v0.1.7–v0.1.10 的结构性问题与转向结论见
+  `docs/ops/planning/zotero-native-dashboard.md`）。窗口零内联脚本：新开
+  chrome 窗口作用域没有 Zotero 全局，load/unload 监听由开窗方挂，页面逻辑
+  全在 TS bundle。UI 资产层在 `addon/content/ui/`：`tokens.css` 是唯一的
+  颜色出处（语义对齐网页端 `_contract.css`，浅色 classic/深色 night，
+  `--rp-` 前缀，组件禁止写死颜色）；图标是 `ui/icons/` 的 16×16
+  stroke SVG，页面内经 mask-image + currentColor 上色，工具栏用自带
+  明暗媒体查询的 `monitor.svg`。入口唯一 = 搜索栏右侧按钮
+  （`#zotero-items-toolbar` 注入，`zotero-tb-search` 右邻；Zotero 7 没有
+  `#zotero-toolbar`，菜单一律不挂）；窗口单例聚焦、几何记忆 pref
+  （`dashboardWindow`）。
 - 密钥输入框一律明文（`type="text"`）：Gecko 原生 reveal-password 眼睛与
   插件注入眼睛会叠加成两只，2026-10-14 老板拍板全明文，禁止再引回
   `type="password"` 或任何显隐切换按钮。

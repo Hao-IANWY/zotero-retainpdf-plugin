@@ -7,10 +7,10 @@ import {
 } from "./modules/preferenceScript";
 import { registerTranslateMenuItem } from "./modules/translateMenu";
 import {
-  closeMonitorWindow,
-  registerMonitorEntry,
-  removeMonitorEntry,
-} from "./modules/monitorWindow";
+  closeDashboardWindow,
+  registerDashboardEntry,
+  removeDashboardEntry,
+} from "./modules/dashboardWindow";
 import { createZToolkit } from "./utils/ztoolkit";
 import { OFFICIAL_LLM_BASE_URL, RetainPdfClient } from "./api";
 
@@ -50,16 +50,16 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
   );
 
   registerTranslateMenuItem(win);
-  registerMonitorEntry(win);
+  registerDashboardEntry(win);
 }
 
 async function onMainWindowUnload(win: Window): Promise<void> {
-  removeMonitorEntry(win);
+  removeDashboardEntry(win);
   ztoolkit.unregisterAll();
 }
 
 function onShutdown(): void {
-  closeMonitorWindow();
+  closeDashboardWindow();
   ztoolkit.unregisterAll();
   addon.data.alive = false;
   // @ts-expect-error - Plugin instance is not typed

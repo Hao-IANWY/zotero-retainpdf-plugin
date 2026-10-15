@@ -1,0 +1,582 @@
+/* ============================================================
+   RetainPDF 中控台 —— 页面与组件样式
+   纪律:只消费 ui/tokens.css 的 var(--rp-*),禁止颜色字面量;
+   明暗差异只存在于 tokens.css。
+   布局(2026-10-14 老板钦定,GitHub 式):左侧导航栏切换分组
+   (选中态 = 淡底 + 左侧 accent 竖条 + 计数徽章),内容区单栏
+   限宽,卡片等宽等高,全程无横向滚动。
+   图标经 mask-image 上色(background-color: currentColor),
+   SVG 文件本身不带颜色,颜色由元素 color 控制。
+   ============================================================ */
+
+/* ---- 图标(mask 上色) ---- */
+
+.rp-icon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  background-color: currentColor;
+  -webkit-mask: var(--rp-icon) center / contain no-repeat;
+  mask: var(--rp-icon) center / contain no-repeat;
+}
+
+.rp-icon--list {
+  --rp-icon: url("../ui/icons/list.svg");
+}
+.rp-icon--running {
+  --rp-icon: url("../ui/icons/status-running.svg");
+}
+.rp-icon--queued {
+  --rp-icon: url("../ui/icons/status-queued.svg");
+}
+.rp-icon--failed {
+  --rp-icon: url("../ui/icons/status-failed.svg");
+}
+.rp-icon--succeeded {
+  --rp-icon: url("../ui/icons/status-succeeded.svg");
+}
+.rp-icon--doc {
+  --rp-icon: url("../ui/icons/doc.svg");
+}
+.rp-icon--refresh {
+  --rp-icon: url("../ui/icons/refresh.svg");
+}
+.rp-icon--spinner {
+  --rp-icon: url("../ui/icons/spinner.svg");
+  animation: rp-dash-spin 0.8s linear infinite;
+}
+.rp-icon--clear {
+  --rp-icon: url("../ui/icons/clear.svg");
+}
+.rp-icon--empty {
+  --rp-icon: url("../ui/icons/empty.svg");
+}
+.rp-icon--external {
+  --rp-icon: url("../ui/icons/external.svg");
+}
+
+.rp-icon--sm {
+  width: 12px;
+  height: 12px;
+}
+
+@keyframes rp-dash-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- 页面骨架 ---- */
+
+.rp-dash-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  box-sizing: border-box;
+  padding: 24px 28px 28px;
+  overflow: hidden;
+  background: var(--rp-bg);
+  color: var(--rp-ink);
+  font-family: var(--rp-font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.rp-dash-root h1,
+.rp-dash-root h3,
+.rp-dash-root p {
+  margin: 0;
+}
+
+/* 内容限宽居中,超宽窗口不拉稀 */
+.rp-dash-header,
+.rp-dash-errorbar,
+.rp-dash-main {
+  width: min(1020px, 100%);
+  margin-inline: auto;
+}
+
+/* ---- 头部 ---- */
+
+.rp-dash-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-shrink: 0;
+}
+
+.rp-dash-eyebrow {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--rp-muted);
+}
+
+.rp-dash-title {
+  margin-top: 2px;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.rp-dash-subtitle {
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--rp-muted);
+}
+
+/* ---- 按钮 ---- */
+
+.rp-dash-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--rp-line);
+  border-radius: var(--rp-radius-sm);
+  background: var(--rp-paper);
+  color: var(--rp-ink);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 140ms var(--rp-ease-out),
+    transform 140ms var(--rp-ease-out),
+    border-color 140ms var(--rp-ease-out);
+}
+
+.rp-dash-btn:hover {
+  background: var(--rp-accent-weak);
+}
+
+.rp-dash-btn:active {
+  transform: scale(0.97);
+}
+
+.rp-dash-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.rp-dash-btn:disabled:hover {
+  background: var(--rp-paper);
+}
+
+.rp-dash-refresh[data-state="loading"] .rp-icon--refresh {
+  animation: rp-dash-spin 0.8s linear infinite;
+}
+
+/* ---- 非致命错误横幅(有数据时刷新失败) ---- */
+
+.rp-dash-errorbar {
+  flex-shrink: 0;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--rp-line);
+  border-radius: var(--rp-radius-md);
+  background: var(--rp-paper);
+  font-size: 11.5px;
+  color: var(--rp-muted);
+}
+
+.rp-dash-errorbar[hidden] {
+  display: none;
+}
+
+/* ---- 主区:左导航 + 右内容 ---- */
+
+.rp-dash-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 24px;
+  overflow: hidden;
+}
+
+/* GitHub settings 式侧边导航:选中 = 淡底 + 600 字重 + 左侧 accent 竖条 */
+.rp-dash-nav {
+  width: 200px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 2px;
+}
+
+.rp-dash-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  border-radius: var(--rp-radius-sm);
+  background: transparent;
+  color: var(--rp-ink);
+  font-family: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 140ms var(--rp-ease-out);
+}
+
+.rp-dash-nav-item .rp-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--rp-muted);
+}
+
+.rp-dash-nav-item:hover {
+  background: var(--rp-accent-weak);
+}
+
+.rp-dash-nav-item[aria-current="page"] {
+  background: var(--rp-accent-weak);
+  font-weight: 600;
+}
+
+.rp-dash-nav-item[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 7px;
+  bottom: 7px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--rp-accent);
+}
+
+/* GitHub Counter 式计数徽章 */
+.rp-dash-nav-count {
+  margin-left: auto;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--rp-accent-weak);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--rp-muted);
+}
+
+.rp-dash-nav-item[aria-current="page"] .rp-dash-nav-count {
+  background: var(--rp-paper);
+  color: var(--rp-ink);
+}
+
+/* ---- 内容区(单栏,纵向滚动,横向锁死) ---- */
+
+.rp-dash-content {
+  flex: 1;
+  min-width: 0;
+  max-width: 780px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.rp-dash-contentbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px 10px;
+}
+
+.rp-dash-contentbar[hidden] {
+  display: none;
+}
+
+.rp-dash-view-label {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.rp-dash-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--rp-muted);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.rp-dash-clear:hover {
+  border-color: var(--rp-line);
+  background: var(--rp-paper);
+  color: var(--rp-ink);
+}
+
+.rp-dash-clear:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.rp-dash-clear .rp-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.rp-dash-clear[hidden] {
+  display: none;
+}
+
+/* 状态视图(加载 / 失败 / 空) */
+
+.rp-dash-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+  text-align: center;
+}
+
+.rp-dash-state[hidden] {
+  display: none;
+}
+
+.rp-dash-state > .rp-icon {
+  width: 26px;
+  height: 26px;
+  color: var(--rp-muted);
+}
+
+.rp-dash-state-title {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.rp-dash-state-desc {
+  max-width: 420px;
+  font-size: 11.5px;
+  color: var(--rp-muted);
+  overflow-wrap: break-word;
+}
+
+/* 卡片列表:单栏等宽,纵向滚动 */
+
+.rp-dash-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 4px;
+}
+
+.rp-dash-list[hidden] {
+  display: none;
+}
+
+/* 当前分组无任务的虚线占位 */
+.rp-dash-list-empty {
+  margin-top: 4px;
+  padding: 36px 12px;
+  border: 1px dashed var(--rp-line);
+  border-radius: var(--rp-radius-md);
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--rp-muted);
+}
+
+.rp-dash-list-empty[hidden] {
+  display: none;
+}
+
+/* ---- 任务卡片(固定高度,三段式) ----
+   头部信息 / 中部进度区(弹性占位,无内容也留白) / 底部操作行,
+   任何状态组合下等高(老板钦定 2026-10-14) */
+
+.rp-dash-card {
+  display: flex;
+  flex-direction: column;
+  height: 148px;
+  box-sizing: border-box;
+  padding: 14px 16px 12px;
+  border: 1px solid color-mix(in srgb, var(--rp-line) 70%, transparent);
+  border-radius: var(--rp-radius-lg);
+  background: var(--rp-paper);
+  box-shadow: 0 1px 2px
+    color-mix(in srgb, var(--rp-shadow-color) 5%, transparent);
+  flex-shrink: 0;
+}
+
+.rp-dash-card-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.rp-dash-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin-top: 2px;
+  border-radius: 10px;
+  background: var(--rp-accent-weak);
+  color: var(--rp-ink);
+  flex-shrink: 0;
+}
+
+.rp-dash-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.rp-dash-card-titlerow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rp-dash-badge {
+  flex-shrink: 0;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--rp-accent-weak);
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--rp-muted);
+}
+
+.rp-dash-card-title {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rp-dash-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--rp-muted);
+}
+
+.rp-dash-card-meta code {
+  font-family: var(--rp-font-mono);
+  font-size: 11px;
+}
+
+/* 中部进度区:吃掉剩余高度,内容(进度条+stage)底部对齐贴在操作行上方 */
+.rp-dash-zone {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-bottom: 2px;
+}
+
+.rp-dash-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rp-dash-progress[hidden] {
+  display: none;
+}
+
+.rp-dash-progress-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--rp-accent-weak);
+  overflow: hidden;
+}
+
+.rp-dash-progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--rp-accent);
+  transition: width 300ms var(--rp-ease-out);
+}
+
+.rp-dash-progress-pct {
+  width: 34px;
+  text-align: right;
+  font-size: 10.5px;
+  color: var(--rp-muted);
+}
+
+.rp-dash-stage {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--rp-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rp-dash-stage[hidden] {
+  display: none;
+}
+
+/* 状态 pill:running 墨色中性,其余按状态语义着色 */
+.rp-dash-pill {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border: 1px solid var(--rp-line);
+  border-radius: 999px;
+  background: var(--rp-paper);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.rp-dash-pill[data-status="failed"] {
+  border-color: color-mix(in srgb, var(--rp-danger) 45%, transparent);
+  background: var(--rp-danger-weak);
+  color: var(--rp-danger);
+}
+
+.rp-dash-pill[data-status="succeeded"] {
+  border-color: color-mix(in srgb, var(--rp-ok) 45%, transparent);
+  background: var(--rp-ok-weak);
+  color: var(--rp-ok);
+}
+
+.rp-dash-pill[data-status="queued"] {
+  border-color: color-mix(in srgb, var(--rp-warn) 45%, transparent);
+  background: var(--rp-warn-weak);
+  color: var(--rp-warn);
+}
+
+.rp-dash-card-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--rp-line) 60%, transparent);
+}
+
+.rp-dash-open {
+  min-height: 26px;
+  font-size: 11.5px;
+}
+
+.rp-dash-open .rp-icon {
+  width: 12px;
+  height: 12px;
+}

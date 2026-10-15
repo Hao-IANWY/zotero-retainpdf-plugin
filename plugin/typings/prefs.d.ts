@@ -23,7 +23,7 @@ declare namespace _ZoteroTypes {
       "workers": string;
       "workersDeepseek": string;
       "workersCustom": string;
-      "monitorWindow": string;
+      "dashboardWindow": string;
     };
   }
 }

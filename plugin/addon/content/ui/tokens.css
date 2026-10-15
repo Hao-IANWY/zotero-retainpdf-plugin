@@ -1,0 +1,72 @@
+/* RetainPDF 插件 UI 设计 token —— 语义契约对齐 frontend/web themes/_contract.css。
+ * 浅色取 classic 值,深色取 night 值;--rp- 前缀防宿主样式冲突。
+ * 组件只消费 var(--rp-*),禁止写死颜色;明暗只改本文件。
+ * 详见 docs/ops/planning/zotero-native-dashboard.md 附录 A。 */
+
+.rp-dash-root {
+  --rp-bg: #f5f5f7;
+  --rp-paper: #ffffff;
+  --rp-surface: rgba(255, 255, 255, 0.78);
+  --rp-ink: #1d1d1f;
+  --rp-muted: #6e6e73;
+  --rp-line: #e5e5ea;
+
+  --rp-accent: var(--rp-ink); /* classic 哲学:墨块即强调;独立 token 供换肤 */
+  --rp-accent-weak: rgba(29, 29, 31, 0.12);
+
+  --rp-danger: #ff3b30;
+  --rp-danger-weak: rgba(255, 59, 48, 0.12);
+  --rp-ok: #34c759;
+  --rp-ok-weak: rgba(52, 199, 89, 0.12);
+  --rp-warn: #ff9f0a;
+  --rp-warn-weak: rgba(255, 159, 10, 0.14);
+  --rp-gold: #b08d3a;
+  --rp-gold-weak: rgba(176, 141, 58, 0.14);
+
+  --rp-shadow-color: #0f172a;
+
+  --rp-font-sans:
+    "SF Pro Display", "SF Pro SC", "PingFang SC", "Helvetica Neue",
+    "Noto Sans CJK SC", sans-serif;
+  --rp-font-mono: "Iosevka", "JetBrains Mono", monospace;
+
+  --rp-radius-sm: 8px; /* 按钮 / pill */
+  --rp-radius-md: 12px; /* 计数 tile */
+  --rp-radius-lg: 16px; /* 任务卡片 */
+  --rp-radius-xl: 24px; /* 分组面板 */
+
+  --rp-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  .rp-dash-root {
+    --rp-bg: #141618;
+    --rp-paper: #1e2226;
+    --rp-surface: rgba(30, 34, 38, 0.88);
+    --rp-ink: #e8e6e3;
+    --rp-muted: #9a9590;
+    --rp-line: #2c3238;
+
+    --rp-accent-weak: rgba(232, 230, 227, 0.14);
+
+    --rp-danger: #e07068;
+    --rp-danger-weak: rgba(224, 112, 104, 0.16);
+    --rp-ok: #6bc48a;
+    --rp-ok-weak: rgba(107, 196, 138, 0.14);
+    --rp-warn: #d4a24a;
+    --rp-warn-weak: rgba(212, 162, 74, 0.14);
+    --rp-gold: #c9a227;
+    --rp-gold-weak: rgba(201, 162, 39, 0.16);
+
+    --rp-shadow-color: #000000;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rp-dash-root *,
+  .rp-dash-root *::before,
+  .rp-dash-root *::after {
+    transition: none;
+    animation: none;
+  }
+}

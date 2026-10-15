@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet href="../ui/tokens.css" type="text/css"?> <?xml-stylesheet
+href="dashboard.css" type="text/css"?>
+<!DOCTYPE window>
+<!-- 中控台页面骨架(docs/ops/planning/zotero-native-dashboard.md)。
+     GitHub 式布局(2026-10-14 老板钦定):左侧导航栏切换分组(计数徽章
+     替代旧计数条),内容区单栏限宽,卡片等宽等高,无横向滚动。
+     零内联脚本、零 data-l10n-id:开窗方(dashboardWindow.ts)在 load 后
+     调 dashboardScript.initDashboard(win) 完成全部文案填充与事件装配——
+     新开 chrome 窗口的作用域里没有 Zotero 全局,不能走 preferences.xhtml
+     的 onload 内联派发路线。导航/卡片 DOM 由脚本按 token 化类名构建。 -->
+<window
+  id="__addonRef__-dashboard"
+  xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+  xmlns:html="http://www.w3.org/1999/xhtml"
+  windowtype="__addonRef__:dashboard"
+>
+  <html:div class="rp-dash-root" id="rp-dash-root">
+    <html:header class="rp-dash-header">
+      <html:div>
+        <html:p class="rp-dash-eyebrow" id="rp-dash-eyebrow"></html:p>
+        <html:h1 class="rp-dash-title" id="rp-dash-title"></html:h1>
+        <html:p class="rp-dash-subtitle" id="rp-dash-subtitle"></html:p>
+      </html:div>
+      <html:button
+        class="rp-dash-btn rp-dash-refresh"
+        id="rp-dash-refresh"
+        type="button"
+      >
+        <html:span class="rp-icon rp-icon--refresh"></html:span>
+        <html:span id="rp-dash-refresh-label"></html:span>
+      </html:button>
+    </html:header>
+    <html:div
+      class="rp-dash-errorbar"
+      id="rp-dash-errorbar"
+      hidden="hidden"
+    ></html:div>
+    <html:div class="rp-dash-main">
+      <html:nav class="rp-dash-nav" id="rp-dash-nav"></html:nav>
+      <html:div class="rp-dash-content">
+        <html:div
+          class="rp-dash-contentbar"
+          id="rp-dash-contentbar"
+          hidden="hidden"
+        >
+          <html:span
+            class="rp-dash-view-label"
+            id="rp-dash-view-label"
+          ></html:span>
+          <html:button
+            class="rp-dash-clear"
+            id="rp-dash-clear"
+            type="button"
+            hidden="hidden"
+          >
+            <html:span class="rp-icon rp-icon--clear"></html:span>
+            <html:span id="rp-dash-clear-label"></html:span>
+          </html:button>
+        </html:div>
+        <html:div class="rp-dash-state" id="rp-dash-loading">
+          <html:span class="rp-icon rp-icon--spinner"></html:span>
+          <html:p
+            class="rp-dash-state-title"
+            id="rp-dash-loading-text"
+          ></html:p>
+        </html:div>
+        <html:div class="rp-dash-state" id="rp-dash-error" hidden="hidden">
+          <html:span class="rp-icon rp-icon--failed"></html:span>
+          <html:p class="rp-dash-state-title" id="rp-dash-error-title"></html:p>
+          <html:p class="rp-dash-state-desc" id="rp-dash-error-reason"></html:p>
+          <html:button
+            class="rp-dash-btn"
+            id="rp-dash-retry"
+            type="button"
+          ></html:button>
+        </html:div>
+        <html:div class="rp-dash-state" id="rp-dash-empty" hidden="hidden">
+          <html:span class="rp-icon rp-icon--empty"></html:span>
+          <html:p class="rp-dash-state-title" id="rp-dash-empty-title"></html:p>
+          <html:p class="rp-dash-state-desc" id="rp-dash-empty-desc"></html:p>
+        </html:div>
+        <html:div
+          class="rp-dash-list"
+          id="rp-dash-list"
+          hidden="hidden"
+        ></html:div>
+        <html:div
+          class="rp-dash-list-empty"
+          id="rp-dash-list-empty"
+          hidden="hidden"
+        ></html:div>
+      </html:div>
+    </html:div>
+  </html:div>
+</window>

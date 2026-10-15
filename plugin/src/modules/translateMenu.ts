@@ -100,8 +100,8 @@ async function translateSelectedItems() {
   }
   // 全部成功才自动关窗;有失败时保留现场等用户看完手动关(closeOnClick)
   if (!anyFailed) {
-    // 顺手指个路:队列与详情在监控台窗口里看更全(计划 M2 体验收尾)
-    progress.addDescription(getString("monitor-hint"));
+    // 顺手指个路:队列与进度在中控台窗口里看更全
+    progress.addDescription(getString("dashboard-hint"));
     progress.startCloseTimer(8000);
   }
 }

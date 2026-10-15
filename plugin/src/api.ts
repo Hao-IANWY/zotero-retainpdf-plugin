@@ -142,7 +142,10 @@ export class RetainPdfClient {
           `hint=${data?.operator_hint} provider=${data?.provider_message}`,
       );
       throw new Error(
-        data?.provider_message || data?.summary || data?.operator_hint || "rejected",
+        data?.provider_message ||
+          data?.summary ||
+          data?.operator_hint ||
+          "rejected",
       );
     }
     return data.summary || "";
@@ -257,6 +260,62 @@ export class RetainPdfClient {
       { responseType: "json", timeout: 15000 },
     );
     return this.envelope(response)?.data;
+  }
+
+  /**
+   * GET /api/v1/jobs?limit&offset&include_live_stage=false —— 任务列表,
+   * 中控台数据源(契约 JobListItemView,见 contracts/job-status.v1)。
+   * include_live_stage=false 与网页任务中心一致:活跃卡的实时进度由
+   * SSE(watchProgressEvents)供给,列表不背 stage 快照的开销。
+   */
+  async listJobs({
+    limit = 50,
+    offset = 0,
+  }: { limit?: number; offset?: number } = {}): Promise<any[]> {
+    const url =
+      `${this.baseURL}/api/v1/jobs?limit=${limit}&offset=${offset}` +
+      `&include_live_stage=false`;
+    let body: any;
+    try {
+      const response = await Zotero.HTTP.request("GET", url, {
+        responseType: "json",
+        timeout: 15000,
+      });
+      if (response.status !== 200) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      body = response.response;
+    } catch (error) {
+      throw new Error(describeHttpFailure(error));
+    }
+    if (body?.code !== 0) {
+      throw new Error(body?.message || `code ${body?.code}`);
+    }
+    return body?.data?.items ?? [];
+  }
+
+  /**
+   * DELETE /api/v1/library/books/{job_id} —— 真删任务记录与磁盘产物
+   * (源 PDF 保留),中控台「清空分组」用。运行中任务后端 409 拒绝,
+   * 由调用方串行逐个删并计数(与网页端 deleteTaskCenterHistory 同纪律)。
+   * 成功体可能是信封也可能是空体,宽容解析,不强行过 envelope。
+   */
+  async deleteJob(jobId: string): Promise<void> {
+    const url =
+      `${this.baseURL}/api/v1/library/books/` + encodeURIComponent(jobId);
+    let response: any;
+    try {
+      response = await Zotero.HTTP.request("DELETE", url, {
+        responseType: "json",
+        timeout: 15000,
+      });
+    } catch (error) {
+      throw new Error(describeHttpFailure(error));
+    }
+    const body = response?.response;
+    if (body && body.code !== undefined && body.code !== 0) {
+      throw new Error(body.message || `code ${body.code}`);
+    }
   }
 
   /**
