@@ -29,7 +29,10 @@ async function onStartup() {
   Zotero.PreferencePanes.register({
     pluginID: addon.data.config.addonID,
     src: `${rootURI}content/preferences.xhtml`,
-    stylesheets: [`${rootURI}content/preferences.css`],
+    stylesheets: [
+      `${rootURI}content/ui/tokens.css`,
+      `${rootURI}content/preferences.css`,
+    ],
   });
 
   await Promise.all(

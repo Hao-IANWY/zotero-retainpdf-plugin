@@ -1,12 +1,10 @@
 /* ============================================================
-   RetainPDF 中控台 —— 页面与组件样式
-   纪律:只消费 ui/tokens.css 的 var(--rp-*),禁止颜色字面量;
-   明暗差异只存在于 tokens.css。
-   布局(2026-10-14 老板钦定,GitHub 式):左侧导航栏切换分组
-   (选中态 = 淡底 + 左侧 accent 竖条 + 计数徽章),内容区单栏
-   限宽,卡片等宽等高,全程无横向滚动。
-   图标经 mask-image 上色(background-color: currentColor),
-   SVG 文件本身不带颜色,颜色由元素 color 控制。
+   RetainPDF 中控台 —— HeroUI 风格的原生组件层
+   只消费 ui/tokens.css 的 var(--rp-*);明暗差异只存在于 tokens。
+   保留既定信息架构:GitHub 式左侧分组导航、单栏限宽、任务卡片
+   固定等高。组件语言统一为 bordered / light / ghost 按钮、
+   语义 Chip、柔和表面层级与清晰的键盘焦点。
+   图标经 mask-image 上色,SVG 文件本身不带颜色。
    ============================================================ */
 
 /* ---- 图标(mask 上色) ---- */
@@ -55,7 +53,6 @@
 .rp-icon--external {
   --rp-icon: url("../ui/icons/external.svg");
 }
-
 .rp-icon--sm {
   width: 12px;
   height: 12px;
@@ -69,18 +66,25 @@
 
 /* ---- 页面骨架 ---- */
 
+.rp-dash-root,
+.rp-dash-root *,
+.rp-dash-root *::before,
+.rp-dash-root *::after {
+  box-sizing: border-box;
+}
+
 .rp-dash-root {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  box-sizing: border-box;
-  padding: 24px 28px 28px;
+  padding: clamp(20px, 3vw, 30px);
   overflow: hidden;
   background: var(--rp-bg);
   color: var(--rp-ink);
   font-family: var(--rp-font-sans);
   font-size: 13px;
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
 .rp-dash-root h1,
@@ -89,11 +93,25 @@
   margin: 0;
 }
 
-/* 内容限宽居中,超宽窗口不拉稀 */
+.rp-dash-root ::selection {
+  background: var(--rp-accent-soft);
+  color: var(--rp-ink);
+}
+
+.rp-dash-root button {
+  font-family: inherit;
+}
+
+.rp-dash-root button:focus-visible {
+  outline: 2px solid var(--rp-accent);
+  outline-offset: 2px;
+}
+
+/* 内容限宽居中,超宽窗口仍保持稳定的阅读行长。 */
 .rp-dash-header,
 .rp-dash-errorbar,
 .rp-dash-main {
-  width: min(1020px, 100%);
+  width: min(1040px, 100%);
   margin-inline: auto;
 }
 
@@ -101,57 +119,75 @@
 
 .rp-dash-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 20px;
   flex-shrink: 0;
+  margin-bottom: 20px;
+  padding: 0 2px 20px;
+  border-bottom: 1px solid var(--rp-line);
+}
+
+.rp-dash-header > div:first-child {
+  min-width: 0;
 }
 
 .rp-dash-eyebrow {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--rp-muted);
+  color: var(--rp-accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  line-height: 1.4;
+  text-transform: uppercase;
 }
 
 .rp-dash-title {
-  margin-top: 2px;
-  font-size: 19px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  margin-top: 4px;
+  font-family: var(--rp-font-display);
+  font-size: 24px;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.25;
 }
 
 .rp-dash-subtitle {
-  margin-top: 4px;
-  font-size: 11.5px;
+  margin-top: 6px;
   color: var(--rp-muted);
+  font-size: 12px;
+  line-height: 1.55;
 }
 
-/* ---- 按钮 ---- */
+/* ---- HeroUI 式按钮:默认 bordered,详情使用 ghost ---- */
 
 .rp-dash-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: 30px;
-  padding: 0 12px;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 14px;
   border: 1px solid var(--rp-line);
-  border-radius: var(--rp-radius-sm);
+  border-radius: 10px;
   background: var(--rp-paper);
-  color: var(--rp-ink);
-  font-family: inherit;
+  box-shadow: var(--rp-shadow-sm);
+  color: var(--rp-ink-soft);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 550;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
   transition:
-    background 140ms var(--rp-ease-out),
-    transform 140ms var(--rp-ease-out),
-    border-color 140ms var(--rp-ease-out);
+    background 160ms var(--rp-ease-out),
+    border-color 160ms var(--rp-ease-out),
+    box-shadow 160ms var(--rp-ease-out),
+    color 160ms var(--rp-ease-out),
+    transform 160ms var(--rp-ease-out);
 }
 
 .rp-dash-btn:hover {
-  background: var(--rp-accent-weak);
+  border-color: var(--rp-line-strong);
+  background: var(--rp-surface);
+  color: var(--rp-ink);
 }
 
 .rp-dash-btn:active {
@@ -159,29 +195,69 @@
 }
 
 .rp-dash-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: default;
+  transform: none;
 }
 
 .rp-dash-btn:disabled:hover {
+  border-color: var(--rp-line);
   background: var(--rp-paper);
 }
 
+.rp-dash-refresh {
+  flex-shrink: 0;
+}
+
+.rp-dash-refresh .rp-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--rp-muted);
+}
+
 .rp-dash-refresh[data-state="loading"] .rp-icon--refresh {
+  color: var(--rp-accent);
   animation: rp-dash-spin 0.8s linear infinite;
+}
+
+/* 首屏失败后的唯一主动作使用 solid 层级,其余按钮保持安静。 */
+#rp-dash-retry {
+  margin-top: 6px;
+  border-color: var(--rp-accent);
+  background: var(--rp-accent);
+  color: var(--rp-on-accent);
+}
+
+#rp-dash-retry:hover {
+  border-color: var(--rp-accent-hover);
+  background: var(--rp-accent-hover);
+  color: var(--rp-on-accent);
 }
 
 /* ---- 非致命错误横幅(有数据时刷新失败) ---- */
 
 .rp-dash-errorbar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   flex-shrink: 0;
-  margin-bottom: 12px;
-  padding: 8px 12px;
-  border: 1px solid var(--rp-line);
+  margin-bottom: 14px;
+  padding: 10px 13px;
+  border: 1px solid color-mix(in srgb, var(--rp-danger) 22%, transparent);
   border-radius: var(--rp-radius-md);
-  background: var(--rp-paper);
+  background: var(--rp-danger-weak);
+  color: var(--rp-danger);
   font-size: 11.5px;
-  color: var(--rp-muted);
+  line-height: 1.5;
+}
+
+.rp-dash-errorbar::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: currentColor;
 }
 
 .rp-dash-errorbar[hidden] {
@@ -191,100 +267,123 @@
 /* ---- 主区:左导航 + 右内容 ---- */
 
 .rp-dash-main {
-  flex: 1;
-  min-height: 0;
   display: flex;
-  gap: 24px;
+  flex: 1;
+  gap: 26px;
+  min-height: 0;
   overflow: hidden;
 }
 
-/* GitHub settings 式侧边导航:选中 = 淡底 + 600 字重 + 左侧 accent 竖条 */
 .rp-dash-nav {
-  width: 200px;
-  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding-top: 2px;
+  flex-shrink: 0;
+  gap: 4px;
+  width: 192px;
+  padding: 2px 0;
 }
 
 .rp-dash-nav-item {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   width: 100%;
-  padding: 6px 10px;
-  border: none;
-  border-radius: var(--rp-radius-sm);
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
   background: transparent;
-  color: var(--rp-ink);
-  font-family: inherit;
+  color: var(--rp-muted);
   font-size: 12.5px;
+  font-weight: 500;
   text-align: left;
   cursor: pointer;
-  transition: background 140ms var(--rp-ease-out);
+  transition:
+    background 160ms var(--rp-ease-out),
+    border-color 160ms var(--rp-ease-out),
+    color 160ms var(--rp-ease-out);
 }
 
 .rp-dash-nav-item .rp-icon {
-  width: 14px;
-  height: 14px;
-  color: var(--rp-muted);
+  width: 15px;
+  height: 15px;
+  color: var(--rp-faint);
+  transition: color 160ms var(--rp-ease-out);
 }
 
 .rp-dash-nav-item:hover {
-  background: var(--rp-accent-weak);
+  background: var(--rp-surface);
+  color: var(--rp-ink);
+}
+
+.rp-dash-nav-item:hover .rp-icon {
+  color: var(--rp-ink-soft);
 }
 
 .rp-dash-nav-item[aria-current="page"] {
+  border-color: color-mix(in srgb, var(--rp-accent) 9%, transparent);
   background: var(--rp-accent-weak);
+  color: var(--rp-accent);
   font-weight: 600;
+}
+
+.rp-dash-nav-item[aria-current="page"] .rp-icon {
+  color: var(--rp-accent);
 }
 
 .rp-dash-nav-item[aria-current="page"]::before {
   content: "";
   position: absolute;
-  left: -8px;
-  top: 7px;
-  bottom: 7px;
+  left: -1px;
+  top: 10px;
+  bottom: 10px;
   width: 3px;
-  border-radius: 2px;
+  border-radius: var(--rp-radius-full);
   background: var(--rp-accent);
 }
 
-/* GitHub Counter 式计数徽章 */
+/* HeroUI Chip 式计数:紧凑、等宽数字、选中态与导航同色系。 */
 .rp-dash-nav-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 20px;
   margin-left: auto;
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: var(--rp-accent-weak);
-  font-size: 11px;
-  font-weight: 400;
+  padding: 0 6px;
+  border-radius: var(--rp-radius-full);
+  background: var(--rp-surface);
   color: var(--rp-muted);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 550;
+  line-height: 1;
 }
 
 .rp-dash-nav-item[aria-current="page"] .rp-dash-nav-count {
-  background: var(--rp-paper);
-  color: var(--rp-ink);
+  background: var(--rp-accent-soft);
+  color: var(--rp-accent);
 }
 
 /* ---- 内容区(单栏,纵向滚动,横向锁死) ---- */
 
 .rp-dash-content {
-  flex: 1;
-  min-width: 0;
-  max-width: 780px;
   display: flex;
+  flex: 1;
   flex-direction: column;
+  max-width: 800px;
+  min-width: 0;
   overflow: hidden;
 }
 
 .rp-dash-contentbar {
-  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 2px 10px;
+  flex-shrink: 0;
+  min-height: 30px;
+  padding: 0 2px 12px;
 }
 
 .rp-dash-contentbar[hidden] {
@@ -292,34 +391,44 @@
 }
 
 .rp-dash-view-label {
-  font-size: 13.5px;
+  color: var(--rp-ink-soft);
+  font-size: 14px;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .rp-dash-clear {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 24px;
+  gap: 5px;
+  min-height: 28px;
   padding: 0 9px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--rp-radius-sm);
   background: transparent;
   color: var(--rp-muted);
-  font-family: inherit;
   font-size: 11px;
+  font-weight: 500;
   cursor: pointer;
+  transition:
+    background 160ms var(--rp-ease-out),
+    color 160ms var(--rp-ease-out),
+    transform 160ms var(--rp-ease-out);
 }
 
 .rp-dash-clear:hover {
-  border-color: var(--rp-line);
-  background: var(--rp-paper);
-  color: var(--rp-ink);
+  background: var(--rp-danger-weak);
+  color: var(--rp-danger);
+}
+
+.rp-dash-clear:active {
+  transform: scale(0.97);
 }
 
 .rp-dash-clear:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: default;
+  transform: none;
 }
 
 .rp-dash-clear .rp-icon {
@@ -331,17 +440,19 @@
   display: none;
 }
 
-/* 状态视图(加载 / 失败 / 空) */
+/* ---- 状态视图(加载 / 失败 / 空) ---- */
 
 .rp-dash-state {
   display: flex;
+  flex: 1;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  flex: 1;
   min-height: 0;
+  padding: 40px 20px;
   text-align: center;
+  animation: rp-dash-state-in 280ms var(--rp-ease-out) both;
 }
 
 .rp-dash-state[hidden] {
@@ -349,49 +460,74 @@
 }
 
 .rp-dash-state > .rp-icon {
-  width: 26px;
-  height: 26px;
-  color: var(--rp-muted);
+  width: 32px;
+  height: 32px;
+  margin-bottom: 4px;
+  color: var(--rp-faint);
+}
+
+#rp-dash-loading > .rp-icon {
+  color: var(--rp-accent);
+}
+
+#rp-dash-error > .rp-icon {
+  color: var(--rp-danger);
 }
 
 .rp-dash-state-title {
-  font-size: 13px;
-  font-weight: 500;
+  color: var(--rp-ink-soft);
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .rp-dash-state-desc {
-  max-width: 420px;
-  font-size: 11.5px;
+  max-width: 440px;
   color: var(--rp-muted);
+  font-size: 12px;
+  line-height: 1.65;
   overflow-wrap: break-word;
 }
 
-/* 卡片列表:单栏等宽,纵向滚动 */
+@keyframes rp-dash-state-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---- 卡片列表:单栏等宽,纵向滚动 ---- */
 
 .rp-dash-list {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
   display: flex;
+  flex: 1;
   flex-direction: column;
-  gap: 10px;
-  padding-right: 4px;
+  gap: 12px;
+  min-height: 0;
+  padding: 2px 6px 14px 2px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-color: var(--rp-line-strong) transparent;
+  scrollbar-width: thin;
 }
 
 .rp-dash-list[hidden] {
   display: none;
 }
 
-/* 当前分组无任务的虚线占位 */
 .rp-dash-list-empty {
-  margin-top: 4px;
-  padding: 36px 12px;
-  border: 1px dashed var(--rp-line);
-  border-radius: var(--rp-radius-md);
-  text-align: center;
-  font-size: 11.5px;
+  margin-top: 2px;
+  padding: 44px 16px;
+  border: 1px dashed var(--rp-line-strong);
+  border-radius: var(--rp-radius-lg);
+  background: var(--rp-surface);
   color: var(--rp-muted);
+  font-size: 12px;
+  text-align: center;
+  animation: rp-dash-state-in 280ms var(--rp-ease-out) both;
 }
 
 .rp-dash-list-empty[hidden] {
@@ -399,21 +535,35 @@
 }
 
 /* ---- 任务卡片(固定高度,三段式) ----
-   头部信息 / 中部进度区(弹性占位,无内容也留白) / 底部操作行,
-   任何状态组合下等高(老板钦定 2026-10-14) */
+   头部信息 / 中部进度区(弹性占位) / 底部操作行;
+   所有状态组合下严格等高。 */
 
 .rp-dash-card {
   display: flex;
   flex-direction: column;
-  height: 148px;
-  box-sizing: border-box;
-  padding: 14px 16px 12px;
-  border: 1px solid color-mix(in srgb, var(--rp-line) 70%, transparent);
-  border-radius: var(--rp-radius-lg);
-  background: var(--rp-paper);
-  box-shadow: 0 1px 2px
-    color-mix(in srgb, var(--rp-shadow-color) 5%, transparent);
   flex-shrink: 0;
+  height: 154px;
+  padding: 15px 17px 11px;
+  border: 1px solid var(--rp-line);
+  border-radius: 14px;
+  background: var(--rp-paper);
+  box-shadow: var(--rp-shadow-sm);
+  transition:
+    border-color 180ms var(--rp-ease-out),
+    box-shadow 180ms var(--rp-ease-out),
+    transform 180ms var(--rp-ease-out);
+}
+
+@media (hover: hover) {
+  .rp-dash-card:hover {
+    border-color: color-mix(in srgb, var(--rp-accent) 22%, var(--rp-line));
+    box-shadow: var(--rp-shadow-md);
+    transform: translateY(-1px);
+  }
+}
+
+.rp-dash-card:focus-within {
+  border-color: color-mix(in srgb, var(--rp-accent) 38%, var(--rp-line));
 }
 
 .rp-dash-card-main {
@@ -426,41 +576,51 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
-  margin-top: 2px;
-  border-radius: 10px;
-  background: var(--rp-accent-weak);
-  color: var(--rp-ink);
   flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  margin-top: 1px;
+  border-radius: 11px;
+  background: var(--rp-accent-weak);
+  color: var(--rp-accent);
+}
+
+.rp-dash-card-icon .rp-icon {
+  width: 17px;
+  height: 17px;
 }
 
 .rp-dash-card-body {
   flex: 1;
   min-width: 0;
+  padding-top: 1px;
 }
 
 .rp-dash-card-titlerow {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .rp-dash-badge {
   flex-shrink: 0;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--rp-accent-weak);
-  font-size: 10.5px;
-  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--rp-surface);
   color: var(--rp-muted);
+  font-size: 10px;
+  font-weight: 550;
+  line-height: 1.4;
 }
 
 .rp-dash-card-title {
   min-width: 0;
-  font-size: 13px;
-  font-weight: 600;
   overflow: hidden;
+  color: var(--rp-ink);
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -468,31 +628,34 @@
 .rp-dash-card-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 12px;
-  margin-top: 4px;
-  font-size: 11.5px;
+  gap: 3px 12px;
+  margin-top: 5px;
   color: var(--rp-muted);
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .rp-dash-card-meta code {
+  color: var(--rp-ink-soft);
   font-family: var(--rp-font-mono);
-  font-size: 11px;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
 }
 
-/* 中部进度区:吃掉剩余高度,内容(进度条+stage)底部对齐贴在操作行上方 */
+/* 中部进度区吃掉剩余高度,内容底部对齐贴在操作行上方。 */
 .rp-dash-zone {
-  flex: 1;
-  min-height: 0;
   display: flex;
+  flex: 1;
   flex-direction: column;
   justify-content: flex-end;
+  min-height: 0;
   padding-bottom: 2px;
 }
 
 .rp-dash-progress {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
 }
 
 .rp-dash-progress[hidden] {
@@ -501,31 +664,34 @@
 
 .rp-dash-progress-track {
   flex: 1;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--rp-accent-weak);
+  height: 7px;
   overflow: hidden;
+  border-radius: var(--rp-radius-full);
+  background: var(--rp-accent-weak);
 }
 
 .rp-dash-progress-bar {
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--rp-radius-full);
   background: var(--rp-accent);
-  transition: width 300ms var(--rp-ease-out);
+  transition: width 360ms var(--rp-ease-out);
 }
 
 .rp-dash-progress-pct {
-  width: 34px;
-  text-align: right;
+  width: 36px;
+  color: var(--rp-accent);
   font-size: 10.5px;
-  color: var(--rp-muted);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-align: right;
 }
 
 .rp-dash-stage {
-  margin-top: 4px;
-  font-size: 11px;
-  color: var(--rp-muted);
+  margin-top: 5px;
   overflow: hidden;
+  color: var(--rp-muted);
+  font-size: 11px;
+  line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -534,49 +700,190 @@
   display: none;
 }
 
-/* 状态 pill:running 墨色中性,其余按状态语义着色 */
+/* 语义 Chip:文字 + 圆点双重表达,不只依赖颜色。 */
 .rp-dash-pill {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
   flex-shrink: 0;
-  padding: 3px 10px;
-  border: 1px solid var(--rp-line);
-  border-radius: 999px;
-  background: var(--rp-paper);
-  font-size: 11px;
-  font-weight: 500;
+  margin-top: 2px;
+  padding: 4px 9px;
+  border-radius: var(--rp-radius-full);
+  background: var(--rp-surface);
+  color: var(--rp-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.rp-dash-pill::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.rp-dash-pill[data-status="running"] {
+  background: var(--rp-accent-weak);
+  color: var(--rp-accent);
+}
+
+.rp-dash-pill[data-status="running"]::before {
+  animation: rp-dash-live 1.8s ease-in-out infinite;
 }
 
 .rp-dash-pill[data-status="failed"] {
-  border-color: color-mix(in srgb, var(--rp-danger) 45%, transparent);
   background: var(--rp-danger-weak);
   color: var(--rp-danger);
 }
 
 .rp-dash-pill[data-status="succeeded"] {
-  border-color: color-mix(in srgb, var(--rp-ok) 45%, transparent);
   background: var(--rp-ok-weak);
   color: var(--rp-ok);
 }
 
 .rp-dash-pill[data-status="queued"] {
-  border-color: color-mix(in srgb, var(--rp-warn) 45%, transparent);
   background: var(--rp-warn-weak);
   color: var(--rp-warn);
+}
+
+@keyframes rp-dash-live {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 .rp-dash-card-footer {
   display: flex;
   justify-content: flex-end;
-  margin-top: 8px;
-  padding-top: 10px;
-  border-top: 1px solid color-mix(in srgb, var(--rp-line) 60%, transparent);
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid color-mix(in srgb, var(--rp-line) 72%, transparent);
 }
 
 .rp-dash-open {
   min-height: 26px;
-  font-size: 11.5px;
+  margin-right: -7px;
+  padding: 0 8px;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--rp-muted);
+  font-size: 11px;
+  font-weight: 550;
+}
+
+.rp-dash-open:hover {
+  border-color: transparent;
+  background: var(--rp-accent-weak);
+  color: var(--rp-accent);
 }
 
 .rp-dash-open .rp-icon {
   width: 12px;
   height: 12px;
+}
+
+/* ---- 窄窗口:先压缩侧栏,再转为可横向浏览的分段导航 ---- */
+
+@media (max-width: 760px) {
+  .rp-dash-root {
+    padding: 20px;
+  }
+
+  .rp-dash-header {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+  }
+
+  .rp-dash-main {
+    gap: 18px;
+  }
+
+  .rp-dash-nav {
+    width: 164px;
+  }
+
+  .rp-dash-title {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 580px) {
+  .rp-dash-root {
+    padding: 16px;
+  }
+
+  .rp-dash-header {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .rp-dash-title {
+    font-size: 20px;
+  }
+
+  .rp-dash-subtitle {
+    font-size: 11px;
+  }
+
+  .rp-dash-refresh {
+    min-height: 32px;
+    padding-inline: 11px;
+  }
+
+  .rp-dash-main {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .rp-dash-nav {
+    flex-direction: row;
+    gap: 4px;
+    width: 100%;
+    padding: 0 0 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+
+  .rp-dash-nav-item {
+    flex: none;
+    width: auto;
+    min-height: 34px;
+    padding: 5px 9px;
+    white-space: nowrap;
+  }
+
+  .rp-dash-nav-item[aria-current="page"]::before {
+    display: none;
+  }
+
+  .rp-dash-nav-count {
+    margin-left: 2px;
+  }
+
+  .rp-dash-content {
+    max-width: none;
+  }
+
+  .rp-dash-card {
+    padding-inline: 14px;
+  }
+
+  .rp-dash-card-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .rp-dash-pill {
+    padding-inline: 7px;
+  }
 }

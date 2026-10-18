@@ -1,72 +1,113 @@
-/* RetainPDF 插件 UI 设计 token —— 语义契约对齐 frontend/web themes/_contract.css。
- * 浅色取 classic 值,深色取 night 值;--rp- 前缀防宿主样式冲突。
- * 组件只消费 var(--rp-*),禁止写死颜色;明暗只改本文件。
- * 详见 docs/ops/planning/zotero-native-dashboard.md 附录 A。 */
+/* RetainPDF 插件 UI 设计 token —— 中控台与偏好面板共用。
+ * 视觉参考 HeroUI:冷调中性色、单一靛蓝 accent、柔和语义色与分层表面。
+ * --rp- 前缀防宿主样式冲突;组件只消费 var(--rp-*),禁止写死颜色。
+ * 浅色取 paper/surface 层级与轻阴影,深色改用更亮的表面建立层级。 */
 
-.rp-dash-root {
-  --rp-bg: #f5f5f7;
-  --rp-paper: #ffffff;
-  --rp-surface: rgba(255, 255, 255, 0.78);
-  --rp-ink: #1d1d1f;
-  --rp-muted: #6e6e73;
-  --rp-line: #e5e5ea;
+.rp-dash-root,
+.rp-root {
+  color-scheme: light;
 
-  --rp-accent: var(--rp-ink); /* classic 哲学:墨块即强调;独立 token 供换肤 */
-  --rp-accent-weak: rgba(29, 29, 31, 0.12);
+  --rp-bg: #f6f6f9;
+  --rp-paper: #fdfdfe;
+  --rp-surface: #f0f0f5;
+  --rp-surface-hover: #e9e9f0;
+  --rp-ink: #1c1c22;
+  --rp-ink-soft: #3f3f47;
+  --rp-muted: #686874;
+  --rp-faint: #858591;
+  --rp-line: #e3e3ea;
+  --rp-line-strong: #d0d0da;
 
-  --rp-danger: #ff3b30;
-  --rp-danger-weak: rgba(255, 59, 48, 0.12);
-  --rp-ok: #34c759;
-  --rp-ok-weak: rgba(52, 199, 89, 0.12);
-  --rp-warn: #ff9f0a;
-  --rp-warn-weak: rgba(255, 159, 10, 0.14);
-  --rp-gold: #b08d3a;
-  --rp-gold-weak: rgba(176, 141, 58, 0.14);
+  --rp-accent: #5e6ad2;
+  --rp-accent-hover: #4f59bd;
+  --rp-accent-weak: rgba(94, 106, 210, 0.09);
+  --rp-accent-soft: rgba(94, 106, 210, 0.16);
+  --rp-on-accent: #fbfbff;
 
-  --rp-shadow-color: #0f172a;
+  --rp-danger: #c9372c;
+  --rp-danger-weak: rgba(201, 55, 44, 0.09);
+  --rp-ok: #147d5b;
+  --rp-ok-weak: rgba(20, 125, 91, 0.1);
+  --rp-warn: #a15c07;
+  --rp-warn-weak: rgba(161, 92, 7, 0.11);
+  --rp-gold: #9a7418;
+  --rp-gold-weak: rgba(154, 116, 24, 0.12);
+
+  --rp-shadow-color: #29283d;
+  --rp-shadow-sm:
+    0 1px 2px rgba(41, 40, 61, 0.04), 0 1px 4px rgba(41, 40, 61, 0.03);
+  --rp-shadow-md:
+    0 12px 28px -20px rgba(41, 40, 61, 0.35),
+    0 4px 12px -8px rgba(41, 40, 61, 0.12);
 
   --rp-font-sans:
-    "SF Pro Display", "SF Pro SC", "PingFang SC", "Helvetica Neue",
+    "SF Pro Text", "SF Pro SC", "PingFang SC", "Segoe UI Variable",
     "Noto Sans CJK SC", sans-serif;
-  --rp-font-mono: "Iosevka", "JetBrains Mono", monospace;
+  --rp-font-display:
+    "SF Pro Display", "SF Pro SC", "PingFang SC", "Segoe UI Variable Display",
+    "Noto Sans CJK SC", sans-serif;
+  --rp-font-mono: "SFMono-Regular", "Iosevka", "JetBrains Mono", monospace;
 
-  --rp-radius-sm: 8px; /* 按钮 / pill */
-  --rp-radius-md: 12px; /* 计数 tile */
-  --rp-radius-lg: 16px; /* 任务卡片 */
-  --rp-radius-xl: 24px; /* 分组面板 */
+  --rp-radius-sm: 8px;
+  --rp-radius-md: 12px;
+  --rp-radius-lg: 16px;
+  --rp-radius-xl: 22px;
+  --rp-radius-full: 999px;
 
-  --rp-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --rp-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --rp-select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 1.5 6 6l4.5-4.5' stroke='%23686874' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 @media (prefers-color-scheme: dark) {
-  .rp-dash-root {
-    --rp-bg: #141618;
-    --rp-paper: #1e2226;
-    --rp-surface: rgba(30, 34, 38, 0.88);
-    --rp-ink: #e8e6e3;
-    --rp-muted: #9a9590;
-    --rp-line: #2c3238;
+  .rp-dash-root,
+  .rp-root {
+    color-scheme: dark;
 
-    --rp-accent-weak: rgba(232, 230, 227, 0.14);
+    --rp-bg: #131316;
+    --rp-paper: #1b1b20;
+    --rp-surface: #24242b;
+    --rp-surface-hover: #2d2d36;
+    --rp-ink: #f0eff5;
+    --rp-ink-soft: #d3d1dc;
+    --rp-muted: #a5a2af;
+    --rp-faint: #85828f;
+    --rp-line: #303037;
+    --rp-line-strong: #43434e;
 
-    --rp-danger: #e07068;
-    --rp-danger-weak: rgba(224, 112, 104, 0.16);
-    --rp-ok: #6bc48a;
-    --rp-ok-weak: rgba(107, 196, 138, 0.14);
-    --rp-warn: #d4a24a;
-    --rp-warn-weak: rgba(212, 162, 74, 0.14);
-    --rp-gold: #c9a227;
-    --rp-gold-weak: rgba(201, 162, 39, 0.16);
+    --rp-accent: #9aa2ff;
+    --rp-accent-hover: #b1b7ff;
+    --rp-accent-weak: rgba(154, 162, 255, 0.12);
+    --rp-accent-soft: rgba(154, 162, 255, 0.2);
+    --rp-on-accent: #1a1929;
 
-    --rp-shadow-color: #000000;
+    --rp-danger: #f27a70;
+    --rp-danger-weak: rgba(242, 122, 112, 0.12);
+    --rp-ok: #62cb96;
+    --rp-ok-weak: rgba(98, 203, 150, 0.12);
+    --rp-warn: #e5ac54;
+    --rp-warn-weak: rgba(229, 172, 84, 0.12);
+    --rp-gold: #d1b45f;
+    --rp-gold-weak: rgba(209, 180, 95, 0.13);
+
+    --rp-shadow-color: #09090d;
+    --rp-shadow-sm: 0 1px 3px rgba(9, 9, 13, 0.2);
+    --rp-shadow-md:
+      0 14px 30px -20px rgba(9, 9, 13, 0.7),
+      0 4px 12px -8px rgba(9, 9, 13, 0.35);
+
+    --rp-select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 1.5 6 6l4.5-4.5' stroke='%23a5a2af' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .rp-dash-root *,
   .rp-dash-root *::before,
-  .rp-dash-root *::after {
-    transition: none;
-    animation: none;
+  .rp-dash-root *::after,
+  .rp-root *,
+  .rp-root *::before,
+  .rp-root *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
   }
 }

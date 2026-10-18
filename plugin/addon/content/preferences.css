@@ -1,235 +1,232 @@
 /* ============================================================
-   RetainPDF 偏好面板 —— Linear 风卡片设计
-   纪律:单一靛蓝 accent / 发丝边框代替阴影 / 透明度表面 /
-   字重 ≤600 / 8px 间距基数 / 150ms 自定义缓出微交互。
-   仅被 preferences.xhtml 引入,作用域限于该文档。
+   RetainPDF 偏好面板 —— 与中控台共用的 HeroUI 式组件语言
+   颜色、圆角、字体与阴影全部来自 ui/tokens.css;本文件只负责
+   XUL 表单布局与组件状态。卡片、填充输入框、分段 Tabs 和
+   bordered 检查按钮在两个原生窗口中保持一致。
    ============================================================ */
 
 .rp-root {
-  /* 设计 token(亮色):Zotero 面板底色是浅灰,卡片用纯白浮起 */
-  --rp-accent: #5e6ad2;
-  --rp-accent-soft: rgba(94, 106, 210, 0.14);
-  --rp-hairline: rgba(20, 20, 40, 0.09);
-  --rp-hairline-strong: rgba(20, 20, 40, 0.24);
-  --rp-card: #ffffff;
-  --rp-field-bg: rgba(20, 20, 40, 0.035);
-  --rp-field-bg-hover: rgba(20, 20, 40, 0.055);
-  --rp-field-bg-focus: #ffffff;
-  --rp-segment-active: #ffffff;
-  --rp-ok: #1a7f37;
-  --rp-fail: #d1242f;
-  --rp-radius: 10px;
-  --rp-radius-sm: 6px;
-  --rp-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-
-  padding: 2px 6px;
-}
-
-@media (prefers-color-scheme: dark) {
-  .rp-root {
-    --rp-accent: #828cf5;
-    --rp-accent-soft: rgba(130, 140, 245, 0.18);
-    --rp-hairline: rgba(255, 255, 255, 0.1);
-    --rp-hairline-strong: rgba(255, 255, 255, 0.24);
-    --rp-card: rgba(255, 255, 255, 0.045);
-    --rp-field-bg: rgba(255, 255, 255, 0.05);
-    --rp-field-bg-hover: rgba(255, 255, 255, 0.08);
-    --rp-field-bg-focus: rgba(255, 255, 255, 0.08);
-    --rp-segment-active: rgba(255, 255, 255, 0.12);
-    --rp-ok: #3fb950;
-    --rp-fail: #f85149;
-  }
+  padding: 4px 6px 8px;
+  color: var(--rp-ink);
+  font-family: var(--rp-font-sans);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 /* ---- 卡片分组 ---- */
 
-/* 覆盖 XUL groupbox 原生凹槽边框,标题移入卡片内部 */
+/* 覆盖 XUL groupbox 原生凹槽边框,标题移入卡片内部。 */
 groupbox.rp-group {
-  margin: 0 0 14px;
-  padding: 16px 18px 14px;
-  border: 1px solid var(--rp-hairline);
-  border-radius: var(--rp-radius);
-  background: var(--rp-card);
-  box-shadow: 0 1px 2px rgba(20, 20, 40, 0.04);
-}
-
-@media (prefers-color-scheme: dark) {
-  groupbox.rp-group {
-    box-shadow: none;
-  }
+  margin: 0 0 16px;
+  padding: 18px 20px 15px;
+  border: 1px solid var(--rp-line);
+  border-radius: 14px;
+  background: var(--rp-paper);
+  box-shadow: var(--rp-shadow-sm);
 }
 
 .rp-group-header {
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 h2.rp-group-title {
   margin: 0;
-  font-size: 13.5px;
+  color: var(--rp-ink);
+  font-family: var(--rp-font-display);
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: -0.01em;
-  opacity: 0.95;
+  letter-spacing: -0.015em;
+  line-height: 1.4;
 }
 
 .rp-group-desc {
-  margin-top: 3px;
+  margin-top: 4px;
+  color: var(--rp-muted);
   font-size: 11.5px;
-  opacity: 0.55;
+  line-height: 1.55;
+}
+
+.rp-fields {
+  padding-top: 5px;
+  border-top: 1px solid color-mix(in srgb, var(--rp-line) 72%, transparent);
 }
 
 /* ---- 字段行 ---- */
 
 .rp-field {
-  padding: 6px 0;
+  padding: 7px 0;
 }
 
-/* 标签列:固定宽度右对齐,跨卡片输入框左缘对齐 */
+/* 标签列固定宽度右对齐,跨卡片输入框左缘保持整齐。 */
 .rp-label {
-  width: 10.5em;
   flex-shrink: 0;
-  margin-inline-end: 12px;
+  width: 11em;
+  margin-inline-end: 13px;
+  color: var(--rp-muted);
+  font-size: 12px;
+  font-weight: 500;
   text-align: right;
-  font-size: 12.5px;
-  opacity: 0.75;
 }
 
-/* ---- 输入框(填充式:默认淡灰填充,focus 浮起变白 + accent 光晕) ---- */
+/* ---- HeroUI 式填充输入框 ---- */
 
-input.rp-input {
-  min-height: 30px;
-  padding: 4px 10px;
-  border: 1px solid transparent;
-  border-radius: var(--rp-radius-sm);
-  background: var(--rp-field-bg);
-  color: inherit;
-  font-size: 12.5px;
+input.rp-input,
+select.rp-input {
+  min-height: 34px;
+  padding: 5px 11px;
+  border: 1px solid var(--rp-line);
+  border-radius: 9px;
+  background: var(--rp-surface);
+  color: var(--rp-ink);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.4;
   transition:
-    background 140ms var(--rp-ease-out),
-    border-color 140ms var(--rp-ease-out),
-    box-shadow 140ms var(--rp-ease-out);
+    background 160ms var(--rp-ease-out),
+    border-color 160ms var(--rp-ease-out),
+    box-shadow 160ms var(--rp-ease-out),
+    color 160ms var(--rp-ease-out);
 }
 
-input.rp-input:hover {
-  background: var(--rp-field-bg-hover);
+input.rp-input:hover,
+select.rp-input:hover {
+  border-color: var(--rp-line-strong);
+  background: var(--rp-paper);
 }
 
-input.rp-input:focus {
-  background: var(--rp-field-bg-focus);
+input.rp-input:focus,
+select.rp-input:focus {
   border-color: var(--rp-accent);
-  box-shadow: 0 0 0 3px var(--rp-accent-soft);
+  background: var(--rp-paper);
+  box-shadow: 0 0 0 3px var(--rp-accent-weak);
   outline: none;
+}
+
+input.rp-input::placeholder {
+  color: var(--rp-faint);
+  opacity: 1;
 }
 
 input.rp-input-narrow {
   width: 6em;
 }
 
-/* 只读展示态(DeepSeek 预置地址):不绑偏好,不参与 hover/focus 反馈 */
+/* 只读展示态仍保持完整对比度,只用表面与文字颜色区分。 */
 input.rp-input[readonly] {
-  opacity: 0.6;
+  background: var(--rp-surface);
+  color: var(--rp-muted);
   cursor: default;
 }
 
 input.rp-input[readonly]:hover,
 input.rp-input[readonly]:focus {
-  background: var(--rp-field-bg);
-  border-color: transparent;
+  border-color: var(--rp-line);
+  background: var(--rp-surface);
   box-shadow: none;
 }
 
-/* 选项切换驱动的行显隐(XUL hidden 属性的 CSS 兜底) */
+/* 选项切换驱动的行显隐(XUL hidden 属性的 CSS 兜底)。 */
 .rp-field[hidden] {
   display: none;
 }
 
-/* ---- 分段控件(引擎/供应商选择) ---- */
+/* ---- 分段 Tabs(引擎 / 供应商选择) ---- */
 
 .rp-segment {
-  padding: 2px;
-  border: none;
-  border-radius: 7px;
-  background: var(--rp-field-bg);
-  gap: 2px;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--rp-line);
+  border-radius: 10px;
+  background: var(--rp-surface);
 }
 
 button.rp-segment-item {
   -moz-appearance: none;
   appearance: none;
+  min-height: 28px;
   margin: 0;
-  padding: 3px 14px;
+  padding: 3px 15px;
   border: none;
-  border-radius: 5px;
+  border-radius: 7px;
   background: transparent;
-  color: inherit;
-  font-size: 12px;
-  line-height: 1.6;
-  opacity: 0.6;
+  color: var(--rp-muted);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.5;
   cursor: pointer;
   transition:
-    opacity 140ms var(--rp-ease-out),
-    background 140ms var(--rp-ease-out),
-    box-shadow 140ms var(--rp-ease-out);
+    background 160ms var(--rp-ease-out),
+    box-shadow 160ms var(--rp-ease-out),
+    color 160ms var(--rp-ease-out),
+    transform 160ms var(--rp-ease-out);
 }
 
 button.rp-segment-item:hover {
-  opacity: 0.9;
+  color: var(--rp-ink);
 }
 
-/* 选中切片浮起:亮色下是白色块 + 微阴影,暗色下是提亮表面 */
+button.rp-segment-item:active {
+  transform: scale(0.97);
+}
+
 button.rp-segment-item[aria-checked="true"] {
-  background: var(--rp-segment-active);
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.08),
-    0 0 0 1px var(--rp-hairline);
-  opacity: 1;
+  background: var(--rp-paper);
+  box-shadow: var(--rp-shadow-sm);
+  color: var(--rp-accent);
+  font-weight: 600;
 }
 
 button.rp-segment-item:focus-visible {
   outline: 2px solid var(--rp-accent);
-  outline-offset: 1px;
+  outline-offset: 2px;
 }
 
-/* ---- 图标按钮(密钥可见性 / 模型刷新) ---- */
+/* ---- 图标按钮(模型刷新) ---- */
 
 .rp-icon-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  margin-inline-start: 6px;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  margin-inline-start: 7px;
   padding: 0;
-  border: none;
+  border: 1px solid transparent;
   border-radius: var(--rp-radius-sm);
   background: transparent;
-  color: inherit;
-  opacity: 0.45;
+  color: var(--rp-muted);
   cursor: pointer;
-  flex-shrink: 0;
   transition:
-    transform 140ms var(--rp-ease-out),
-    opacity 140ms var(--rp-ease-out),
-    background 140ms var(--rp-ease-out);
+    background 160ms var(--rp-ease-out),
+    border-color 160ms var(--rp-ease-out),
+    color 160ms var(--rp-ease-out),
+    transform 160ms var(--rp-ease-out);
 }
 
 .rp-icon-btn:hover {
-  opacity: 0.9;
-  background: var(--rp-field-bg-hover);
+  background: var(--rp-accent-weak);
+  color: var(--rp-accent);
 }
 
 .rp-icon-btn:active {
-  transform: scale(0.92);
+  transform: scale(0.94);
+}
+
+.rp-icon-btn:focus-visible {
+  outline: 2px solid var(--rp-accent);
+  outline-offset: 2px;
 }
 
 .rp-icon-btn svg {
   display: block;
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
 }
 
-/* 刷新按钮加载态:图标旋转,屏蔽重复点击 */
 .rp-refresh-btn[data-state="loading"] {
-  opacity: 0.4;
+  color: var(--rp-accent);
   pointer-events: none;
 }
 
@@ -243,53 +240,53 @@ button.rp-segment-item:focus-visible {
   }
 }
 
-/* ---- 模型下拉(与输入框同套填充式,自绘箭头替代原生样式) ---- */
+/* ---- 模型下拉:与输入框同套填充样式 ---- */
 
 select.rp-select {
   -moz-appearance: none;
   appearance: none;
-  padding-inline-end: 30px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23666' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  padding-inline-end: 32px;
+  background-image: var(--rp-select-arrow);
   background-repeat: no-repeat;
-  background-position: right 10px center;
+  background-position: right 11px center;
 }
 
 select.rp-select:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: default;
 }
 
-@media (prefers-color-scheme: dark) {
-  select.rp-select {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23aaa' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  }
-}
-
-/* ---- 连接检查(按钮在卡片头部右侧,自身即状态机) ---- */
+/* ---- 连接检查(bordered 按钮,自身即状态机) ---- */
 
 button.rp-check-btn {
   -moz-appearance: none;
   appearance: none;
-  padding: 5px 16px;
-  border: 1px solid var(--rp-hairline);
-  border-radius: var(--rp-radius-sm);
-  background: transparent;
-  color: inherit;
-  font-size: 12.5px;
-  font-weight: 500;
-  cursor: pointer;
   flex-shrink: 0;
+  min-height: 32px;
+  padding: 5px 14px;
+  border: 1px solid var(--rp-line);
+  border-radius: 9px;
+  background: var(--rp-paper);
+  box-shadow: var(--rp-shadow-sm);
+  color: var(--rp-ink-soft);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 550;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
   transition:
-    transform 140ms var(--rp-ease-out),
-    background 140ms var(--rp-ease-out),
-    border-color 140ms var(--rp-ease-out),
-    color 140ms var(--rp-ease-out),
-    box-shadow 140ms var(--rp-ease-out);
+    background 160ms var(--rp-ease-out),
+    border-color 160ms var(--rp-ease-out),
+    box-shadow 160ms var(--rp-ease-out),
+    color 160ms var(--rp-ease-out),
+    transform 160ms var(--rp-ease-out);
 }
 
 button.rp-check-btn:hover {
-  background: var(--rp-field-bg-hover);
-  border-color: var(--rp-hairline-strong);
+  border-color: color-mix(in srgb, var(--rp-accent) 38%, var(--rp-line));
+  background: var(--rp-accent-weak);
+  color: var(--rp-accent);
 }
 
 button.rp-check-btn:active {
@@ -297,55 +294,80 @@ button.rp-check-btn:active {
 }
 
 button.rp-check-btn:focus-visible {
-  border-color: var(--rp-accent);
-  box-shadow: 0 0 0 3px var(--rp-accent-soft);
-  outline: none;
+  outline: 2px solid var(--rp-accent);
+  outline-offset: 2px;
 }
 
-/* 状态机:检查中禁用并呼吸,成功染绿,失败染红 */
-button.rp-check-btn[data-state="checking"] {
+button.rp-check-btn:disabled {
+  opacity: 0.55;
   cursor: default;
-  animation: rp-pulse 1.2s ease-in-out infinite;
+  transform: none;
+}
+
+button.rp-check-btn[data-state="checking"] {
+  border-color: color-mix(in srgb, var(--rp-accent) 25%, var(--rp-line));
+  background: var(--rp-accent-weak);
+  color: var(--rp-accent);
+  cursor: default;
+  animation: rp-pulse 1.4s ease-in-out infinite;
 }
 
 button.rp-check-btn[data-state="ok"] {
+  border-color: color-mix(in srgb, var(--rp-ok) 28%, var(--rp-line));
+  background: var(--rp-ok-weak);
   color: var(--rp-ok);
-  border-color: var(--rp-ok);
 }
 
 button.rp-check-btn[data-state="fail"] {
-  color: var(--rp-fail);
-  border-color: var(--rp-fail);
+  border-color: color-mix(in srgb, var(--rp-danger) 28%, var(--rp-line));
+  background: var(--rp-danger-weak);
+  color: var(--rp-danger);
 }
 
-/* 结果详情行:卡片头部下方,仅检查时出现(hidden 原生隐藏) */
+/* ---- 检查结果:轻量 Alert,而不是孤立的一行小字 ---- */
+
 .rp-status {
-  margin: -4px 0 10px;
-  font-size: 12px;
-  transition: color 200ms var(--rp-ease-out);
+  display: flex;
+  align-items: center;
+  margin: -3px 0 12px;
+  padding: 8px 10px;
+  border-radius: var(--rp-radius-sm);
+  background: var(--rp-surface);
+  color: var(--rp-muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+  transition:
+    background 180ms var(--rp-ease-out),
+    color 180ms var(--rp-ease-out);
+}
+
+.rp-status[hidden] {
+  display: none;
 }
 
 .rp-status::before {
   content: "";
   display: inline-block;
+  flex-shrink: 0;
   width: 7px;
   height: 7px;
-  margin-inline-end: 7px;
+  margin-inline-end: 8px;
   border-radius: 50%;
-  background: transparent;
-  transition: background 200ms var(--rp-ease-out);
+  background: var(--rp-faint);
 }
 
 .rp-status[data-state="checking"] {
-  opacity: 0.6;
+  background: var(--rp-accent-weak);
+  color: var(--rp-accent);
 }
 
 .rp-status[data-state="checking"]::before {
-  background: #9e9e9e;
+  background: var(--rp-accent);
   animation: rp-pulse 1.1s ease-in-out infinite;
 }
 
 .rp-status[data-state="ok"] {
+  background: var(--rp-ok-weak);
   color: var(--rp-ok);
 }
 
@@ -354,11 +376,12 @@ button.rp-check-btn[data-state="fail"] {
 }
 
 .rp-status[data-state="fail"] {
-  color: var(--rp-fail);
+  background: var(--rp-danger-weak);
+  color: var(--rp-danger);
 }
 
 .rp-status[data-state="fail"]::before {
-  background: var(--rp-fail);
+  background: var(--rp-danger);
 }
 
 @keyframes rp-pulse {
@@ -366,9 +389,8 @@ button.rp-check-btn[data-state="fail"] {
   100% {
     opacity: 1;
   }
-
   50% {
-    opacity: 0.45;
+    opacity: 0.5;
   }
 }
 
@@ -376,35 +398,21 @@ button.rp-check-btn[data-state="fail"] {
 
 .rp-footer {
   align-items: center;
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
 .rp-build {
-  font-size: 11px;
-  letter-spacing: 0.02em;
-  opacity: 0.4;
+  color: var(--rp-faint);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.025em;
 }
 
-/* ---- 减少动态偏好 ---- */
-
+/* 减少动态时保留状态变化本身,只去掉位移与循环动画。 */
 @media (prefers-reduced-motion: reduce) {
-  input.rp-input,
-  button.rp-check-btn,
-  button.rp-segment-item,
-  .rp-icon-btn,
-  .rp-status,
-  .rp-status::before {
-    transition: none;
-  }
-
   button.rp-check-btn:active,
+  button.rp-segment-item:active,
   .rp-icon-btn:active {
     transform: none;
-  }
-
-  .rp-status[data-state="checking"]::before,
-  .rp-refresh-btn[data-state="loading"] svg,
-  button.rp-check-btn[data-state="checking"] {
-    animation: none;
   }
 }
