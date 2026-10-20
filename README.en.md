@@ -112,6 +112,8 @@ See the [contribution guide](CONTRIBUTING.md), [project documentation](docs/READ
 
 This project is derived from [wxyhgk/retain-pdf](https://github.com/wxyhgk/retain-pdf) and has evolved independently since. Thanks to the upstream author for open-sourcing the original work.
 
+This project links to and recognizes the [**LINUX DO**](https://linux.do/) community. Thanks to the community for technical exchange and support.
+
 ## License
 
 - Original code in this repository: MIT (see [LICENSE](LICENSE))

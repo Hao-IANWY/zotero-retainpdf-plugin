@@ -112,6 +112,8 @@ Zotero 7+ 中打开 `工具 → 插件 → 齿轮菜单 → Install Plugin From 
 
 本项目衍生自 [wxyhgk/retain-pdf](https://github.com/wxyhgk/retain-pdf)，并在其基础上独立演进。感谢上游作者的开源贡献。
 
+本项目已链接并认可 [**LINUX DO**](https://linux.do/) 社区，感谢社区提供的技术交流氛围与支持。
+
 ## License
 
 - 本仓库自有代码：MIT（见 [LICENSE](LICENSE)）
