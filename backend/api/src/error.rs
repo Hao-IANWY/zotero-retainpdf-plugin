@@ -1,3 +1,6 @@
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use axum::extract::multipart::MultipartError;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -90,6 +93,14 @@ pub enum AppError {
     /// (包括翻译)时静默失效。
     #[error("{message}")]
     DeleteBlockedByFavorites { message: String, details: Value },
+    /// 带稳定原因码的服务不可用（例如磁盘剩余空间不足）。信封和普通 503 一样，只多
+    /// `error.details.reason`，客户端按原因码提示、不解析英文 message。
+    #[error("{message}")]
+    Reasoned {
+        status: StatusCode,
+        reason: &'static str,
+        message: String,
+    },
 }
 
 #[derive(Serialize)]
@@ -228,6 +239,15 @@ impl AppError {
 
     pub fn service_unavailable(msg: impl Into<String>) -> Self {
         Self::ServiceUnavailable(msg.into())
+    }
+
+    /// 503 + `error.details.reason`。原因码要稳定、可被客户端分支；message 只给人看。
+    pub fn service_unavailable_because(reason: &'static str, msg: impl Into<String>) -> Self {
+        Self::Reasoned {
+            status: StatusCode::SERVICE_UNAVAILABLE,
+            reason,
+            message: msg.into(),
+        }
     }
 
     pub fn internal(msg: impl Into<String>) -> Self {
@@ -405,6 +425,26 @@ impl IntoResponse for AppError {
             )
                 .into_response();
         }
+        if let AppError::Reasoned {
+            status,
+            reason,
+            message,
+        } = &self
+        {
+            return (
+                *status,
+                Json(ErrorBody {
+                    code: i32::from(status.as_u16()) * 100,
+                    message: message.clone(),
+                    error: StructuredError::with_details(
+                        "SERVICE_UNAVAILABLE",
+                        *status,
+                        json!({ "reason": reason }),
+                    ),
+                }),
+            )
+                .into_response();
+        }
         let (status, code, stable_code) = match &self {
             AppError::Unauthorized(_) => (StatusCode::UNAUTHORIZED, 40100, "UNAUTHORIZED"),
             AppError::Forbidden(_) => (StatusCode::FORBIDDEN, 40300, "FORBIDDEN"),
@@ -443,19 +483,51 @@ impl IntoResponse for AppError {
             AppError::LiveTranslation { .. } => unreachable!("handled above"),
             AppError::DocumentMetadata { .. } => unreachable!("handled above"),
             AppError::DeleteBlockedByFavorites { .. } => unreachable!("handled above"),
+            AppError::Reasoned { .. } => unreachable!("handled above"),
         };
-        let body = ErrorBody {
-            code,
-            message: self.to_string(),
-            error: StructuredError::empty(stable_code, status),
+        // 500 的原因只写日志、不回给调用方：底层报错里常带服务器上的路径、SQL、上游返回……
+        // 回给调用方一个编号，凭它在日志里找到原因。
+        let body = match &self {
+            AppError::Internal(detail) => {
+                let error_id = log_internal_error(detail);
+                ErrorBody {
+                    code,
+                    message: format!("internal server error (ref {error_id})"),
+                    error: StructuredError::with_details(
+                        stable_code,
+                        status,
+                        json!({ "error_id": error_id }),
+                    ),
+                }
+            }
+            _ => ErrorBody {
+                code,
+                message: self.to_string(),
+                error: StructuredError::empty(stable_code, status),
+            },
         };
         (status, Json(body)).into_response()
     }
 }
 
+fn log_internal_error(detail: &str) -> String {
+    static NEXT: AtomicU32 = AtomicU32::new(0);
+    let millis = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_millis())
+        .unwrap_or(0);
+    let error_id = format!(
+        "{millis:x}-{:04x}",
+        NEXT.fetch_add(1, Ordering::Relaxed) & 0xffff
+    );
+    tracing::error!(error_id = %error_id, "internal error: {detail}");
+    error_id
+}
+
 impl From<anyhow::Error> for AppError {
     fn from(value: anyhow::Error) -> Self {
-        Self::Internal(value.to_string())
+        // 带上整条原因链：只进日志，不回给调用方。
+        Self::Internal(format!("{value:#}"))
     }
 }
 
@@ -482,6 +554,10 @@ impl From<crate::services::uploads::UploadError> for AppError {
                 Self::service_unavailable("PDF repair tool unavailable")
             }
             UploadError::RepairTimeout => Self::service_unavailable("PDF repair timed out"),
+            UploadError::InsufficientStorage(message) => Self::service_unavailable_because(
+                crate::services::disk_space::INSUFFICIENT_STORAGE,
+                message,
+            ),
             UploadError::Internal(message) => Self::internal(message),
             UploadError::Io(error) => Self::from(error),
         }
@@ -598,12 +674,6 @@ mod tests {
                 50300,
                 "SERVICE_UNAVAILABLE",
             ),
-            (
-                AppError::internal("internal"),
-                StatusCode::INTERNAL_SERVER_ERROR,
-                50000,
-                "INTERNAL",
-            ),
         ];
 
         for (error, expected_status, expected_legacy_code, expected_stable_code) in cases {
@@ -616,6 +686,33 @@ mod tests {
             assert_eq!(payload["error"]["http_status"], status.as_u16());
             assert_eq!(payload["error"]["details"], serde_json::json!({}));
         }
+    }
+
+    #[tokio::test]
+    async fn internal_error_hides_detail_behind_reference() {
+        let (status, payload) = response_json(AppError::internal(
+            "open /srv/data/jobs/j1/secret.pdf: permission denied",
+        ))
+        .await;
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(payload["code"], 50000);
+        assert_eq!(payload["error"]["code"], "INTERNAL");
+        let error_id = payload["error"]["details"]["error_id"]
+            .as_str()
+            .expect("error id")
+            .to_string();
+        assert!(!error_id.is_empty());
+        assert_eq!(
+            payload["message"],
+            format!("internal server error (ref {error_id})")
+        );
+        assert!(!payload.to_string().contains("/srv/data"));
+
+        let (_, again) = response_json(AppError::internal("other")).await;
+        assert_ne!(
+            again["error"]["details"]["error_id"],
+            payload["error"]["details"]["error_id"]
+        );
     }
 
     #[tokio::test]

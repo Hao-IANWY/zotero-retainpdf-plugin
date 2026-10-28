@@ -12,6 +12,8 @@ pub struct JobLaunchDeps<'a> {
     pub db: &'a Db,
     pub data_root: &'a Path,
     pub output_root: &'a Path,
+    /// 数据目录所在磁盘至少留多少空间；0 是不查。
+    pub min_free_disk_bytes: u64,
     pub runtime: JobRuntimeLauncher,
 }
 
@@ -20,12 +22,14 @@ impl<'a> JobLaunchDeps<'a> {
         db: &'a Db,
         data_root: &'a Path,
         output_root: &'a Path,
+        min_free_disk_bytes: u64,
         runtime: JobRuntimeLauncher,
     ) -> Self {
         Self {
             db,
             data_root,
             output_root,
+            min_free_disk_bytes,
             runtime,
         }
     }
@@ -35,6 +39,12 @@ pub fn start_job_execution(
     deps: &JobLaunchDeps<'_>,
     job: JobSnapshot,
 ) -> Result<JobSnapshot, AppError> {
+    // 建任务目录、落库之前：磁盘快满了就不接新任务（已经在跑的不管）。
+    crate::services::disk_space::ensure_free_space(
+        deps.data_root,
+        deps.min_free_disk_bytes,
+        "create a job",
+    )?;
     // The new contract must never silently use the legacy Python transport.
     // Worker rollout is a separate, explicit gate while migration is in flight.
     if job

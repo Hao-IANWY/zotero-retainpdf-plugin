@@ -2,6 +2,7 @@ pub mod artifacts;
 pub(crate) mod book_projection;
 pub mod credentials;
 pub(crate) mod derived_artifacts;
+pub(crate) mod disk_space;
 pub mod download_generation;
 pub(crate) mod download_names;
 pub(crate) mod fonts;

@@ -33,12 +33,6 @@ pub fn build_state(config: Arc<AppConfig>) -> Result<AppState> {
         config.data_root.clone(),
     ));
     db.init()?;
-    let cleaned_legacy_workflows = db.cleanup_legacy_workflows()?;
-    if cleaned_legacy_workflows > 0 {
-        warn!(
-            "startup cleanup migrated {cleaned_legacy_workflows} legacy workflow row(s) from mineru to book"
-        );
-    }
     reconcile_owned_runtime(config.as_ref(), db.as_ref())?;
     if config.api_keys.is_empty() {
         warn!("API 鉴权未启用：未配置任何访问密钥（RUST_API_KEYS / auth.local.json），所有接口匿名可用");
@@ -75,6 +69,7 @@ pub fn build_state(config: Arc<AppConfig>) -> Result<AppState> {
                 python_bin: config.python_bin.clone(),
                 upload_max_bytes: config.upload_max_bytes,
                 upload_max_pages: config.upload_max_pages,
+                min_free_disk_bytes: config.min_free_disk_bytes,
                 processing: config.upload_processing.clone(),
             },
         )),

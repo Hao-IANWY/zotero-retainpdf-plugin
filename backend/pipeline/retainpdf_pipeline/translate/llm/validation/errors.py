@@ -95,8 +95,10 @@ class MathDelimiterError(ValueError):
         *,
         source_text: str = "",
         translated_text: str = "",
+        detail: str = "",
     ) -> None:
-        super().__init__(f"{item_id}: translated output has unbalanced inline math delimiters")
+        # detail 会原样进修复请求的「校验错误」，要说清楚坏在哪个公式。
+        super().__init__(f"{item_id}: {detail or 'translated output has unbalanced inline math delimiters'}")
         self.item_id = item_id
         self.source_text = source_text
         self.translated_text = translated_text

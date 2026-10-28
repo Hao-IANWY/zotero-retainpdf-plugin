@@ -269,6 +269,6 @@ def test_prompt_building_uses_translation_context_windows() -> None:
     )
 
     user_content = messages[-1]["content"]
-    assert "前文上下文（仅供理解，禁止翻译进输出）：The matrix contains one-electron kinetic" in user_content
+    assert "【前文开始（仅供理解，禁止翻译进输出）】\nThe matrix contains one-electron kinetic\n【前文结束】" in user_content
     assert "当前原文是不完整片段；译文必须保持同等不完整，不要用后文上下文补全。" in user_content
-    assert "后文上下文（仅供理解，禁止翻译进输出）：that are used to build the Fock operator." in user_content
+    assert "【后文开始（仅供理解，禁止翻译进输出）】\nthat are used to build the Fock operator.\n【后文结束】" in user_content

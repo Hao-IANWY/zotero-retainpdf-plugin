@@ -42,10 +42,7 @@ mod schema;
 #[path = "db/uploads.rs"]
 mod uploads;
 
-use schema::{
-    ensure_events_column, ensure_glossaries_column, ensure_jobs_column,
-    ensure_no_legacy_artifacts_json, ensure_uploads_column, run_versioned_migrations,
-};
+use schema::{ensure_legacy_columns, ensure_no_legacy_artifacts_json, run_versioned_migrations};
 
 /// How long a connection will wait for a lock held by another writer before
 /// giving up with `SQLITE_BUSY`. Without this, concurrent writers (e.g. the
@@ -254,20 +251,9 @@ impl Db {
             CREATE INDEX IF NOT EXISTS idx_glossaries_updated_at ON glossaries(updated_at DESC);
             "#,
         )?;
-        // New migrations can reference these columns on pre-library databases.
-        // Ensure them before running the migration ladder, not after connect().
-        ensure_jobs_column(conn, "document_id", "TEXT")?;
-        for column in ["stage_detail", "provider", "provider_stage", "event_type"] {
-            ensure_events_column(conn, column, "TEXT")?;
-        }
-        for column in [
-            "progress_current",
-            "progress_total",
-            "retry_count",
-            "elapsed_ms",
-        ] {
-            ensure_events_column(conn, column, "INTEGER")?;
-        }
+        // 早的几个迁移就要用到这些老表后来加的列；必须在迁移阶梯之前补，且要拿写锁
+        //（rust_api 与 jobsd 可能同时启动）。
+        ensure_legacy_columns(&conn)?;
         // 图书馆表走版本化迁移,随 schema 保证存在(不依赖 init 被调用)
         run_versioned_migrations(&conn)?;
         *ready = true;
@@ -276,57 +262,14 @@ impl Db {
 
     pub fn init(&self) -> Result<()> {
         let conn = self.connect()?;
-        ensure_jobs_column(&conn, "runtime_json", "TEXT")?;
-        ensure_jobs_column(&conn, "failure_json", "TEXT")?;
-        ensure_glossaries_column(&conn, "description", "TEXT NOT NULL DEFAULT ''")?;
-        ensure_glossaries_column(&conn, "source_lang", "TEXT NOT NULL DEFAULT ''")?;
-        ensure_glossaries_column(&conn, "target_lang", "TEXT NOT NULL DEFAULT ''")?;
-        ensure_glossaries_column(&conn, "enabled", "INTEGER NOT NULL DEFAULT 1")?;
-        ensure_events_column(&conn, "stage_detail", "TEXT")?;
-        ensure_events_column(&conn, "provider", "TEXT")?;
-        ensure_events_column(&conn, "provider_stage", "TEXT")?;
-        ensure_events_column(&conn, "event_type", "TEXT")?;
-        ensure_events_column(&conn, "progress_current", "INTEGER")?;
-        ensure_events_column(&conn, "progress_total", "INTEGER")?;
-        ensure_events_column(&conn, "retry_count", "INTEGER")?;
-        ensure_events_column(&conn, "elapsed_ms", "INTEGER")?;
+        // connect() 已经补过列；这里再看一眼，代价是几条 PRAGMA。
+        ensure_legacy_columns(&conn)?;
         ensure_no_legacy_artifacts_json(&conn)?;
-        ensure_uploads_column(&conn, "content_hash", "TEXT NOT NULL DEFAULT ''")?;
-        ensure_jobs_column(&conn, "document_id", "TEXT")?;
         conn.execute_batch(
             "CREATE INDEX IF NOT EXISTS idx_uploads_content_hash ON uploads(content_hash);",
         )?;
         self.backfill_library_records()?;
         Ok(())
-    }
-
-    pub fn cleanup_legacy_workflows(&self) -> Result<usize> {
-        let conn = self.connect()?;
-        let changed_jobs = conn.execute(
-            r#"
-            UPDATE jobs
-            SET workflow = '"book"'
-            WHERE workflow = '"mineru"'
-            "#,
-            [],
-        )?;
-        conn.execute(
-            r#"
-            UPDATE jobs
-            SET request_json = replace(request_json, '"workflow":"mineru"', '"workflow":"book"')
-            WHERE request_json LIKE '%"workflow":"mineru"%'
-            "#,
-            [],
-        )?;
-        conn.execute(
-            r#"
-            UPDATE events
-            SET payload_json = replace(payload_json, '"workflow":"mineru"', '"workflow":"book"')
-            WHERE payload_json LIKE '%"workflow":"mineru"%'
-            "#,
-            [],
-        )?;
-        Ok(changed_jobs)
     }
 
     pub fn ping(&self) -> Result<()> {

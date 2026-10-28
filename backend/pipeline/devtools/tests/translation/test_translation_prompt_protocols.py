@@ -166,7 +166,7 @@ def test_build_single_item_fallback_messages_sanitizes_continuation_context_plac
         response_style="plain_text",
     )
     assert "当前原文是不完整片段；译文必须保持同等不完整，不要用后文上下文补全。" in messages[1]["content"]
-    assert "后文上下文（仅供理解，禁止翻译进输出）：evidence against a catalytic cycle and reaction pathway" in messages[1]["content"]
+    assert "【后文开始（仅供理解，禁止翻译进输出）】\nevidence against a catalytic cycle and reaction pathway\n【后文结束】" in messages[1]["content"]
     assert "<f1-2e5/>" not in messages[1]["content"]
     assert "<f2-9ad/>" not in messages[1]["content"]
 
@@ -463,7 +463,7 @@ def test_prompt_builder_can_render_non_default_target_language() -> None:
 
     assert "适合论文排版的英文" in combined_prompt
     assert "直接输出英文译文" in combined_prompt
-    assert "最终英文译文正文" in combined_prompt
+    assert "直接输出【当前原文】的英文译文" in combined_prompt
     assert "适合论文排版的简体中文" not in combined_prompt
 
 
@@ -736,3 +736,30 @@ def test_direct_typst_single_prompt_moves_scoped_terms_into_user_message() -> No
     assert "SCF => 自洽场" not in messages[0]["content"]
     assert "术语要求：" in messages[1]["content"]
     assert "SCF => 自洽场" in messages[1]["content"]
+
+
+def test_single_prompt_puts_context_first_and_answer_instruction_last() -> None:
+    # 20261014032006-e2f12c p006-b009：作答要求夹在中间、原文后面跟着「前文上下文：……」「后文上下文：……」，
+    # 读完没有一处说「下面就是回答」，模型照着格式自己补了个「译文：」再写译文。
+    for math_mode in ("direct_typst", "placeholder"):
+        messages = deepseek_client.build_single_item_fallback_messages(
+            {
+                "item_id": "p006-b009",
+                "protected_source_text": "whereas the experimental value of the ionization energy is 0.9033 Eh",
+                "translation_context_before": "The exact energy of the hydrogen atom is -0.5 Eh,",
+                "translation_context_after": "Example 9-2 illustrates another shortcoming.",
+                "math_mode": math_mode,
+                "metadata": {"structure_role": "body"},
+            },
+            mode="sci",
+            response_style="plain_text",
+        )
+        user_prompt = messages[1]["content"]
+        before = user_prompt.index("The exact energy of the hydrogen atom")
+        after = user_prompt.index("Example 9-2 illustrates")
+        source_start = user_prompt.index("【当前原文开始】")
+        source_end = user_prompt.index("【当前原文结束】")
+        assert before < source_start and after < source_start, math_mode
+        tail = user_prompt[source_end:]
+        assert "上下文（" not in tail and "【前文" not in tail and "【后文" not in tail, math_mode
+        assert user_prompt.splitlines()[-1].startswith("现在直接输出【当前原文】的简体中文译文。"), math_mode

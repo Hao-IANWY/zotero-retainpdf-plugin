@@ -1,7 +1,7 @@
 {
   "name": "zotero-retainpdf",
   "type": "module",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "RetainPDF — 排版保留的文献翻译，Zotero 客户端插件",
   "config": {
     "addonName": "RetainPDF",

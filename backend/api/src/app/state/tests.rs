@@ -437,7 +437,9 @@ fn build_state_reconciles_malformed_running_rows_via_raw_db_fallback() {
 }
 
 #[test]
-fn build_state_cleans_legacy_workflow_rows() {
+/// 旧的 workflow 名 "mineru" 改成 "book"：v17 迁移里升级时跑一次
+///（以前是每次启动都对事件表 LIKE 全表扫描）。
+fn upgrading_to_v17_rewrites_legacy_workflow_rows_once() {
     let fs = TestStateFs::new("cleanup-legacy-workflow");
     let db = fs.db();
     db.init().expect("init db");
@@ -493,6 +495,9 @@ fn build_state_cleans_legacy_workflow_rows() {
         ],
     )
     .expect("insert legacy event");
+    // 装成迁移前一条的库：升级到 v17 时跑那段修正。
+    conn.execute_batch("PRAGMA user_version = 16;")
+        .expect("pretend the database is one migration behind");
 
     let _state = build_state(fs.config()).expect("build state");
 
@@ -522,4 +527,24 @@ fn build_state_cleans_legacy_workflow_rows() {
         )
         .expect("payload json");
     assert!(payload_json.contains("\"workflow\":\"book\""));
+
+    // 已经是迁移后的库，再启动不再扫：之后写进来的旧名原样留着。
+    conn.execute(
+        "UPDATE events SET payload_json = ?1 WHERE job_id = ?2 AND seq = 1",
+        params!["{\"workflow\":\"mineru\"}", "job-legacy-workflow"],
+    )
+    .expect("write a legacy payload after the upgrade");
+    drop(_state);
+    let _again = build_state(fs.config()).expect("build state again");
+    let payload_json: String = conn
+        .query_row(
+            "SELECT payload_json FROM events WHERE job_id = ?1 AND seq = 1",
+            params!["job-legacy-workflow"],
+            |row| row.get(0),
+        )
+        .expect("payload json");
+    assert!(
+        payload_json.contains("\"workflow\":\"mineru\""),
+        "startup must not rescan events: {payload_json}"
+    );
 }

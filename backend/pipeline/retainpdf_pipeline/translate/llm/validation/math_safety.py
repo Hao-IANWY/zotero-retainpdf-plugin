@@ -30,6 +30,45 @@ def has_balanced_inline_math_delimiters(text: str) -> bool:
     return len(UNESCAPED_INLINE_DOLLAR_RE.findall(text or "")) % 2 == 0
 
 
+def _math_spans(text: str) -> list[str]:
+    """`$...$` / `$$...$$` 里的内容（按未转义的 `$` 切开，奇数段就是公式）。"""
+    parts = UNESCAPED_INLINE_DOLLAR_RE.split(text or "")
+    return [part for index, part in enumerate(parts) if index % 2 == 1 and part.strip()]
+
+
+def _braces_balanced(tex: str) -> bool:
+    depth = 0
+    index = 0
+    while index < len(tex):
+        char = tex[index]
+        if char == "\\":
+            index += 2  # \{ \} \\ 都是转义，不算括号
+            continue
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth < 0:
+                return False
+        index += 1
+    return depth == 0
+
+
+def unbalanced_brace_math_spans(source_text: str, translated_text: str) -> list[str]:
+    """译文里花括号不配对、而原文里没有同样写法的公式。
+
+    `$` 成对不代表公式能渲染：真实例子 `$\\rho_{s}(\\mathbf{r}}) = \\rho_{0}(\\mathbf{r})$` 多了一个 `}`，
+    MathJax 解析失败，PDF 里只能把 LaTeX 原样当文字排出来。原文本来就不配对的（OCR 带来的）不算，
+    免得重试也修不好。
+    """
+    source_unbalanced = {re.sub(r"\s+", "", span) for span in _math_spans(source_text) if not _braces_balanced(span)}
+    return [
+        span
+        for span in _math_spans(translated_text)
+        if not _braces_balanced(span) and re.sub(r"\s+", "", span) not in source_unbalanced
+    ]
+
+
 def dropped_latex_commands(source_text: str, translated_text: str) -> dict[str, int]:
     """原文里有、译文里没了的 LaTeX 命令，按丢失个数计。
 
@@ -61,4 +100,5 @@ __all__ = [
     "UNESCAPED_INLINE_DOLLAR_RE",
     "dropped_latex_commands",
     "has_balanced_inline_math_delimiters",
+    "unbalanced_brace_math_spans",
 ]

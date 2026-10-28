@@ -42,18 +42,6 @@ async fn upload_domain_errors_preserve_http_envelopes() {
             "SERVICE_UNAVAILABLE",
             "PDF repair timed out",
         ),
-        (
-            UploadError::Internal("Failed to publish uploaded PDF"),
-            500,
-            "INTERNAL",
-            "Failed to publish uploaded PDF",
-        ),
-        (
-            UploadError::Io(std::io::Error::other("synthetic IO failure")),
-            500,
-            "INTERNAL",
-            "synthetic IO failure",
-        ),
     ];
     for (error, status, code, message) in cases {
         let response = crate::error::AppError::from(error).into_response();
@@ -65,6 +53,28 @@ async fn upload_domain_errors_preserve_http_envelopes() {
                 "error": {"code": code, "http_status": status, "details": {}}
             })
         );
+    }
+
+    // 500 只回编号：底层原因（服务器路径、上游返回）留在日志里。
+    for error in [
+        UploadError::Internal("Failed to publish uploaded PDF".into()),
+        UploadError::Io(std::io::Error::other("synthetic IO failure")),
+    ] {
+        let response = crate::error::AppError::from(error).into_response();
+        assert_eq!(response.status().as_u16(), 500);
+        let payload = read_json(response).await;
+        assert_eq!(payload["code"], 50000);
+        assert_eq!(payload["error"]["code"], "INTERNAL");
+        let error_id = payload["error"]["details"]["error_id"]
+            .as_str()
+            .expect("error id")
+            .to_string();
+        assert_eq!(
+            payload["message"],
+            format!("internal server error (ref {error_id})")
+        );
+        assert!(!payload.to_string().contains("Failed to publish"));
+        assert!(!payload.to_string().contains("synthetic IO failure"));
     }
 }
 
@@ -80,6 +90,7 @@ async fn all_upload_consumers_use_the_injected_processing_budget() {
             python_bin: "/never-start-python".into(),
             upload_max_bytes: 0,
             upload_max_pages: 0,
+            min_free_disk_bytes: 0,
             processing,
         },
     ));
@@ -208,6 +219,7 @@ async fn upload_route_repair_unavailable_preserves_safe_error_and_cleanup() {
             python_bin: "/synthetic-private-missing-python".into(),
             upload_max_bytes: 0,
             upload_max_pages: 0,
+            min_free_disk_bytes: 0,
             processing: Default::default(),
         },
     ));

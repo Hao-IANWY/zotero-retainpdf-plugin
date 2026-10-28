@@ -24,6 +24,8 @@ pub(crate) struct UploadServiceConfig {
     pub(crate) python_bin: String,
     pub(crate) upload_max_bytes: u64,
     pub(crate) upload_max_pages: u32,
+    /// 上传目录所在磁盘至少留多少空间（字节）；0 是不查。
+    pub(crate) min_free_disk_bytes: u64,
     pub(crate) processing: UploadProcessingConfig,
 }
 
@@ -71,6 +73,21 @@ impl UploadService {
             .map_err(|_| busy())
     }
 
+    /// 上传目录所在磁盘的剩余空间够不够再放 `incoming` 字节（加上配置的下限）。处理函数在读请求体之前用
+    /// `incoming = 0` 先查一次，免得把几百 MB 收完才说放不下。
+    pub(crate) fn ensure_free_space(&self, incoming: u64) -> Result<(), UploadError> {
+        let config = &self.inner.config;
+        if config.min_free_disk_bytes == 0 {
+            return Ok(());
+        }
+        crate::services::disk_space::ensure_free_space(
+            &config.uploads_dir,
+            config.min_free_disk_bytes.saturating_add(incoming),
+            "store this upload",
+        )
+        .map_err(|error| UploadError::InsufficientStorage(error.to_string()))
+    }
+
     /// 为一次上传建立暂存目录与流式写入器。扩展名与文件名先于任何落盘
     /// 校验,非法输入零痕迹。
     pub(super) async fn begin_stage(
@@ -102,6 +119,8 @@ impl UploadService {
         if staged.byte_count > max {
             return Err(UploadError::payload_too_large("request body is too large"));
         }
+        // 原文要落两份（原样一份、修复或规范化后一份），按两倍文件大小加上下限算。
+        self.ensure_free_space(staged.byte_count.saturating_mul(2))?;
         let byte_count = staged.byte_count;
         self.run_worker(admission, byte_count, move || {
             prepare_staged_upload(staged, developer_mode)
@@ -124,6 +143,8 @@ impl UploadService {
             return Err(UploadError::payload_too_large("request body is too large"));
         }
         let safe_filename = sanitize_upload_filename(&upload.filename)?;
+        // 原文要落两份（原样一份、修复或规范化后一份），按两倍文件大小加上下限算。
+        self.ensure_free_space(byte_count.saturating_mul(2))?;
         let admission = self.admit()?;
         let uploads_dir = self.inner.config.uploads_dir.clone();
         self.run_worker(admission, byte_count, move || {

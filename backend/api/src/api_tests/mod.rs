@@ -1,4 +1,5 @@
 mod credentials;
+mod disk_space;
 mod glossaries;
 mod golden_replay;
 mod health;
@@ -24,6 +25,7 @@ mod model_requests;
 mod ocr_lifecycle;
 mod origin_gate;
 mod providers;
+mod request_log;
 mod translation_debug;
 mod uploads;
 mod uploads_service;

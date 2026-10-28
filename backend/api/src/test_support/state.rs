@@ -28,6 +28,7 @@ pub(crate) fn assemble_app_state(config: Arc<AppConfig>) -> AppState {
                 python_bin: config.python_bin.clone(),
                 upload_max_bytes: config.upload_max_bytes,
                 upload_max_pages: config.upload_max_pages,
+                min_free_disk_bytes: config.min_free_disk_bytes,
                 processing: config.upload_processing.clone(),
             },
         )),

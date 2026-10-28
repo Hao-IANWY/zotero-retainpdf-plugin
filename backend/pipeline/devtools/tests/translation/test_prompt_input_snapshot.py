@@ -33,12 +33,16 @@ _BUILDERS = [build_single_item_fallback_messages, lambda item: build_messages([i
 #
 # 第二次重录:引用规则从「论文引用统一输出 $^{117}$」改成「行内方括号 [n] 原样、原文是上标才
 # 输出上标」(模型曾把行内 [n] 改上标且只改一部分,同篇混排)。placeholder 那组同样一字未动。
+#
+# 第三次重录(上游 cf72687):逐段请求改成「任务 → 前后文 → 原文 → 注意事项 → 最后一行作答要求」,
+# 前后文用【前文开始/结束】括起来；批量格式的「译文」占位写明开头不加标签。逐段 fallback(route 0)
+# 两种 math_mode 都变；placeholder 的批量(route 1)走 JSON 协议、没变；group member(route 2)两组都没变。
 _DIGESTS = {
-    False: ["92f286faeba1db6ce9a76cf68360a3a3fe1c4806ea528d8258d879677fe7b4c0",
+    False: ["b13b374f6f777d23612bcfaae22c6deea9c84f1399276183d8d5654cc954f4a6",
             "517126bb63dbde134291b00af08c9892b901f623335067179400430a24ecaf27",
             "5e819e5e3685f7a25bb9d7360d34537933633ab035287c3ed85daaa8e8539a59"],
-    True: ["3f61f097537f0a531d1dc83ce426ddf5c2fc513ff2f50ffc1b350b8cb5adb4c1",
-           "066795e7d9be537822b90d07439ee51f9d69d13652a3cc1e6e51965e6c5aab4f",
+    True: ["df8f80b31dcbe83e9cb9c764784082861b681db92ffa1ba7af1253b436fc637a",
+           "01d37d546f5e5b47ac6cdc5a3d699e73416b6d8d34fcb89a17b97bf286d8a75d",
            "5ec0d319f0356da30ddeff0e5440e8dfaea57e192e1f97f1dfecb183efa5bd1a"],
 }
 

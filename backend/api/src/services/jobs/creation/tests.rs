@@ -46,6 +46,7 @@ fn submit_context<'a>(state: &'a AppState) -> JobSubmitDeps<'a> {
             state.db.as_ref(),
             &state.config.data_root,
             &state.config.output_root,
+            state.config.min_free_disk_bytes,
             JobRuntimeLauncher::new(Arc::new(|_| {})),
         ),
     )

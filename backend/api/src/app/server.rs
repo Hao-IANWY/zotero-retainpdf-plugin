@@ -41,19 +41,24 @@ async fn serve_with_shutdown(
     }
 
     // Retention/cleanup is operational maintenance, not startup correctness
-    // (unlike `reconcile_stale_running_jobs`/`cleanup_legacy_workflows`
-    // inside `build_state`), so it only runs here - once when the real
-    // server actually starts serving - rather than in `build_state` itself,
-    // which is also called directly by many unit tests that don't want
-    // background retention sweeps touching their fixtures.
+    // (unlike `reconcile_stale_running_jobs` inside `build_state`), so it
+    // only runs here - once when the real server actually starts serving -
+    // rather than in `build_state` itself, which is also called directly by
+    // many unit tests that don't want background retention sweeps touching
+    // their fixtures.
     let retention_settings = RetentionSettings::from_env();
     log_startup_settings_with_interval(&retention_settings, config.cleanup.interval);
-    if let Err(error) = run_cleanup_once(&retention_settings, state.db.as_ref()) {
+    if let Err(error) = run_cleanup_once(
+        &retention_settings,
+        state.db.as_ref(),
+        &state.config.data_root,
+    ) {
         tracing::warn!("startup retention cleanup sweep failed: {error:#}");
     }
     let _cleanup_handle = spawn_periodic_cleanup_with_interval(
         retention_settings,
         state.db.clone(),
+        std::sync::Arc::new(state.config.data_root.clone()),
         config.cleanup.interval,
     );
 

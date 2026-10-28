@@ -90,12 +90,11 @@ pub(super) fn page_preview_download(
     let width_px = spec.width_px;
     let dpi = spec.dpi;
     let output_dir = job_artifacts_dir(deps, &job)?;
-    let output_path = output_dir.join(format!(
-        "preview-{}-p{:04}-w{}-d{}.jpg",
+    let output_path = output_dir.join(derived_artifacts::job_page_preview_file_name(
         kind.as_str(),
         spec.page,
         width_px,
-        dpi
+        dpi,
     ));
     let path = derived_artifacts::preview::ensure_page_preview(
         derived_artifact_deps(deps),

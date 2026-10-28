@@ -62,7 +62,7 @@ pub(crate) fn ensure_side_by_side_pdf(
     translated_pdf: &Path,
 ) -> Result<PathBuf, AppError> {
     let output_dir = job_artifacts_dir(data_root, job)?;
-    let output_pdf = output_dir.join(format!("{}-side-by-side.pdf", job.job_id));
+    let output_pdf = output_dir.join(super::side_by_side_file_name(&job.job_id));
     if !cached_output_is_fresh(&output_pdf, &[source_pdf, translated_pdf])? {
         build_side_by_side_pdf(deps, source_pdf, translated_pdf, &output_pdf)?;
     }

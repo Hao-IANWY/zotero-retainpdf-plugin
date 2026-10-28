@@ -376,3 +376,72 @@ fn render_options_reject_translated_pdf_name_path_separator() {
         .to_string()
         .contains("render.translated_pdf_name must be a file name"));
 }
+
+/// 这些值以前只查下限，`workers=100000` 能一路传给 Python 线程池和上游模型。
+#[test]
+fn translation_numbers_accept_the_cap_and_reject_above_it() {
+    let mut input = CreateJobInput::default();
+    input.translation.workers = MAX_TRANSLATION_WORKERS;
+    input.translation.batch_size = MAX_TRANSLATION_BATCH_SIZE;
+    input.translation.classify_batch_size = MAX_TRANSLATION_BATCH_SIZE;
+    validate_translation_modes(&input).expect("等于上限应当放行");
+
+    for (field, over) in [
+        ("translation.workers", MAX_TRANSLATION_WORKERS + 1),
+        ("translation.batch_size", MAX_TRANSLATION_BATCH_SIZE + 1),
+        (
+            "translation.classify_batch_size",
+            MAX_TRANSLATION_BATCH_SIZE + 1,
+        ),
+    ] {
+        let mut input = CreateJobInput::default();
+        match field {
+            "translation.workers" => input.translation.workers = over,
+            "translation.batch_size" => input.translation.batch_size = over,
+            _ => input.translation.classify_batch_size = over,
+        }
+        let err =
+            validate_translation_modes(&input).expect_err(&format!("{field}={over} 应当被拒绝"));
+        let text = err.to_string();
+        assert!(text.contains(field), "报错要指出字段: {text}");
+        assert!(text.contains("must be at most"), "报错要说明上限: {text}");
+    }
+}
+
+#[test]
+fn render_numbers_reject_above_the_cap() {
+    let mut input = CreateJobInput::default();
+    input.render.compile_workers = MAX_RENDER_COMPILE_WORKERS + 1;
+    let err = validate_render_options(&input).expect_err("超上限编译并发应当被拒绝");
+    assert!(err.to_string().contains("render.compile_workers"));
+    assert!(err.to_string().contains("must be at most"));
+
+    let mut input = CreateJobInput::default();
+    input.render.pdf_compress_dpi = MAX_RENDER_PDF_COMPRESS_DPI + 1;
+    let err = validate_render_options(&input).expect_err("超上限压缩 DPI 应当被拒绝");
+    assert!(err.to_string().contains("render.pdf_compress_dpi"));
+    assert!(err.to_string().contains("must be at most"));
+
+    let mut input = CreateJobInput::default();
+    input.render.compile_workers = MAX_RENDER_COMPILE_WORKERS;
+    input.render.pdf_compress_dpi = MAX_RENDER_PDF_COMPRESS_DPI;
+    validate_render_options(&input).expect("等于上限应当放行");
+}
+
+#[test]
+fn runtime_numbers_reject_above_the_cap() {
+    let mut input = CreateJobInput::default();
+    input.runtime.timeout_seconds = MAX_RUNTIME_TIMEOUT_SECONDS + 1;
+    let err = validate_runtime_limits(&input).expect_err("超长超时应当被拒绝");
+    assert!(err.to_string().contains("timeout_seconds"));
+
+    let mut input = CreateJobInput::default();
+    input.runtime.no_output_timeout_seconds = MAX_RUNTIME_TIMEOUT_SECONDS + 1;
+    let err = validate_runtime_limits(&input).expect_err("超长空闲超时应当被拒绝");
+    assert!(err.to_string().contains("no_output_timeout_seconds"));
+
+    let mut input = CreateJobInput::default();
+    input.runtime.timeout_seconds = MAX_RUNTIME_TIMEOUT_SECONDS;
+    input.runtime.no_output_timeout_seconds = MAX_RUNTIME_TIMEOUT_SECONDS;
+    validate_runtime_limits(&input).expect("等于上限应当放行");
+}

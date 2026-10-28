@@ -22,6 +22,12 @@ impl<'a> JobsFacade<'a> {
         source_job_id: &str,
     ) -> Result<JobSubmissionView, AppError> {
         let source_job = load_job_or_404(self.command.db, source_job_id)?;
+        // 原地重渲染下面会先删旧产物再落库；磁盘快满了要在动任何文件之前拒绝。
+        crate::services::disk_space::ensure_free_space(
+            self.command.submit.launcher.data_root,
+            self.command.submit.launcher.min_free_disk_bytes,
+            "rerun this job",
+        )?;
         let plan = resume_plan(&source_job, self.command.control.data_root);
         if plan.resume_workflow == Some(WorkflowKind::Render) {
             let job_id = source_job.job_id.clone();

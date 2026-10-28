@@ -42,6 +42,11 @@ pub(crate) fn admit_upload(deps: &UploadApiDeps<'_>) -> Result<Admission, AppErr
     deps.uploads.admit().map_err(AppError::from)
 }
 
+/// 读请求体之前先看一眼磁盘：剩余空间低于下限就别把几百 MB 收进来再拒绝。
+pub(crate) fn ensure_upload_disk_space(deps: &UploadApiDeps<'_>) -> Result<(), AppError> {
+    deps.uploads.ensure_free_space(0).map_err(AppError::from)
+}
+
 /// 把一个 multipart 文件字段分块写入受控暂存目录。字节按实际收到量
 /// 累计检查上限;超限/断开由暂存守卫随 drop 清理,内存不攒整份文件。
 pub(crate) async fn stage_upload_field(

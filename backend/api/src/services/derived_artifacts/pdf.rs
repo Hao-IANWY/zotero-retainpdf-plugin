@@ -16,8 +16,7 @@ pub(crate) fn linearized_pdf_or_original(
         return Ok(input_pdf.to_path_buf());
     }
     let output_dir = job_artifacts_dir(data_root, job)?;
-    let safe_label = label.replace('/', "_");
-    let output_pdf = output_dir.join(format!("{safe_label}.linearized.pdf"));
+    let output_pdf = output_dir.join(super::linearized_file_name(label));
     let input_meta = std::fs::metadata(input_pdf)?;
     if output_pdf.exists() && output_pdf.is_file() {
         let output_meta = std::fs::metadata(&output_pdf)?;

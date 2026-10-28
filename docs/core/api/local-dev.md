@@ -66,6 +66,8 @@ Docker 中 `ops/deployment/docker/delivery/docker/auth.local.json` 的 `api_keys
 - `PYTHON_BIN`：Python 可执行文件。
 - `RUST_API_UPLOAD_MAX_BYTES`：普通上传大小限制，`0` 表示不限制。
 - `RUST_API_UPLOAD_MAX_PAGES`：普通上传页数限制，`0` 表示不限制。
+- `RUST_API_MIN_FREE_DISK_MB`：数据目录所在磁盘至少留多少空间（MiB），默认 `1024`；低于它上传、建任务、原地重跑直接 503（`error.details.reason=insufficient_storage`），已在跑的任务不受影响。`0` 关闭检查。`/health` 的 `disk` 字段会报出 `free_bytes` / `min_free_bytes` / `low`。
+- `RUST_API_DERIVED_CACHE_RETENTION_DAYS`：终态任务的派生缓存（Word、对照 PDF、线性化 PDF、页预览）保留天数，默认 `0` = 不清理；设成正数后按文件修改时间删除旧缓存，下次下载会重新生成。排队/在跑的任务、管线自己写的产物、封面缩略图不删。
 - `RUST_API_MAX_RUNNING_JOBS`：最大并发任务数。
 
 ## Docker 配置位置

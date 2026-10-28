@@ -38,18 +38,24 @@ where
     let Some(guard) = deps.job_drivers.claim(&job_id) else {
         return None;
     };
-    Some(tokio::spawn(async move {
-        let _guard = guard;
-        if let Err(err) = run_job(deps.clone(), job_id.clone(), workflow).await {
-            error!("job {} failed to run: {}", job_id, err);
-            if let Ok(job) = deps.db.get_job(&job_id) {
-                if !matches!(job.status, JobStatusKind::Canceled) {
-                    let _ = persist_failed_job(&deps, job, &err);
+    // driver 里打的日志都带 `job{job_id=…}`。parent 是空的：从请求里发射的 driver 不挂在那个请求的 span 下，
+    // 请求早结束了，任务还要跑很久。
+    let span = tracing::info_span!(parent: None, "job", job_id = %job_id);
+    Some(tokio::spawn(tracing::Instrument::instrument(
+        async move {
+            let _guard = guard;
+            if let Err(err) = run_job(deps.clone(), job_id.clone(), workflow).await {
+                error!("job {} failed to run: {}", job_id, err);
+                if let Ok(job) = deps.db.get_job(&job_id) {
+                    if !matches!(job.status, JobStatusKind::Canceled) {
+                        let _ = persist_failed_job(&deps, job, &err);
+                    }
                 }
+                clear_job_cancel_request(&deps, &job_id).await;
             }
-            clear_job_cancel_request(&deps, &job_id).await;
-        }
-    }))
+        },
+        span,
+    )))
 }
 
 async fn clear_job_cancel_request(deps: &ProcessRuntimeDeps, job_id: &str) {

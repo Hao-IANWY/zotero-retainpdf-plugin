@@ -6,6 +6,7 @@ use crate::models::domain::JobSnapshot;
 pub(crate) mod merged;
 pub(crate) mod pdf;
 pub(crate) mod preview;
+pub(crate) mod retention;
 pub(crate) mod side_by_side;
 pub(crate) mod word;
 
@@ -49,6 +50,25 @@ pub(crate) fn job_artifacts_dir_path(data_root: &Path, job: &JobSnapshot) -> Res
         return Ok(root.join("artifacts"));
     }
     Ok(data_root.join("jobs").join(&job.job_id).join("artifacts"))
+}
+
+// 派生缓存的文件名。生成和回收（`retention.rs`）都从这里拿，改了名字回收那边跟着认得。
+
+pub(crate) fn side_by_side_file_name(job_id: &str) -> String {
+    format!("{job_id}-side-by-side.pdf")
+}
+
+pub(crate) fn layout_docx_file_name(job_id: &str, cache_suffix: &str) -> String {
+    format!("{job_id}-layout-{cache_suffix}.docx")
+}
+
+pub(crate) fn linearized_file_name(label: &str) -> String {
+    format!("{}.linearized.pdf", label.replace('/', "_"))
+}
+
+/// 任务的页预览：`artifacts/preview-<source|translated>-p0001-w1200-d0.jpg`。
+pub(crate) fn job_page_preview_file_name(kind: &str, page: u32, width_px: u32, dpi: u32) -> String {
+    format!("preview-{kind}-p{page:04}-w{width_px}-d{dpi}.jpg")
 }
 
 /// 文档级缓存目录（无 job 时封面/缩略图仍可落盘）。

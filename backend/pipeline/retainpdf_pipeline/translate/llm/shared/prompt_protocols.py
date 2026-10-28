@@ -137,6 +137,34 @@ def _source_looks_incomplete(text: str) -> bool:
     return SOURCE_TERMINAL_RE.search(source) is None
 
 
+def _append_context_blocks(lines: list[str], item: TranslationItemContext) -> None:
+    """逐段请求：前后文放在原文前面，各自用起止标记括起来。"""
+    context_before = item.context_before_for_prompt()
+    if context_before:
+        lines.extend(["【前文开始（仅供理解，禁止翻译进输出）】", context_before, "【前文结束】", ""])
+    context_after = item.context_after_for_prompt()
+    if context_after:
+        lines.extend(["【后文开始（仅供理解，禁止翻译进输出）】", context_after, "【后文结束】", ""])
+
+
+def _append_incomplete_source_guard(lines: list[str], item: TranslationItemContext) -> None:
+    if not _source_looks_incomplete(item.source_for_prompt()):
+        return
+    has_before = bool(item.context_before_for_prompt())
+    has_after = bool(item.context_after_for_prompt())
+    if has_after:
+        lines.append("当前原文是不完整片段；译文必须保持同等不完整，不要用后文上下文补全。")
+    if has_before or has_after:
+        lines.append(HALF_SENTENCE_NO_BORROW_GUARD)
+
+
+def _plain_text_answer_instruction(target_language_name: str) -> str:
+    return (
+        f"现在直接输出【当前原文】的{_target_language_name(target_language_name)}译文。"
+        "第一个字就是译文本身，前面不加标题、标签或引导语，后面不加解释。"
+    )
+
+
 def _append_context_lines(lines: list[str], item: TranslationItemContext) -> None:
     context_before = item.context_before_for_prompt()
     if context_before:
@@ -253,7 +281,7 @@ def direct_typst_batch_user_prompt(
         "请为每段输出一个 tagged block，除此之外不要输出结构化数据、代码块、解释或额外文字。",
         "严格格式：",
         "<<<ITEM item_id=对应的原文 ID>>>",
-        "译文",
+        "（这一段的译文正文，开头不加任何标签）",
         "<<<END>>>",
     ]
     if response_style == "json":
@@ -282,20 +310,16 @@ def direct_typst_single_user_prompt(
     target_language_name: str = DEFAULT_TARGET_LANGUAGE_NAME,
     response_style: str = "plain_text",
 ) -> str:
+    # 逐段请求的排法：任务 → 前后文 → 原文 → 针对这段原文的注意事项 → 最后一行是作答要求。
+    # 以前作答要求夹在中间、原文后面还跟着一串「前文上下文：……」「后文上下文：……」，读完没有一处
+    # 告诉模型「下面就是回答」，模型会照着前面的格式自己补一个小节头再写译文
+    #（20261014032006-e2f12c p006-b009，claude-haiku-5-5：「译文：\n\n而电离能的实验值为…」）。
     lines: list[str] = [
         render_prompt("translation_task_plain_text.txt", **_prompt_context(target_language_name=target_language_name)),
         "",
-        "下面是一段待翻译正文。",
-        (
-            "按 system 指定的 JSON 协议返回译文。"
-            if response_style == "json"
-            else f"你只输出最终{_target_language_name(target_language_name)}译文正文。"
-        ),
-        "",
-        "【当前原文开始】",
-        item.source_for_prompt(),
-        "【当前原文结束】",
     ]
+    _append_context_blocks(lines, item)
+    lines.extend(["【当前原文开始】", item.source_for_prompt(), "【当前原文结束】"])
     _append_math_delimiter_damage_hint(lines, item)
     _append_scoped_terms_guidance(lines, item)
     _append_text_flow_guidance(lines, item)
@@ -303,7 +327,13 @@ def direct_typst_single_user_prompt(
         lines.append(f"风格提示：{item.style_hint}")
     if item.continuation_group:
         lines.append("这是跨栏或跨页续接正文的一部分，请结合上下文理解后直接输出这一整段的译文。")
-    _append_context_lines(lines, item)
+    _append_incomplete_source_guard(lines, item)
+    lines.append("")
+    lines.append(
+        "按 system 指定的 JSON 协议返回【当前原文】的译文。"
+        if response_style == "json"
+        else _plain_text_answer_instruction(target_language_name)
+    )
     return "\n".join(lines).strip()
 
 
@@ -316,19 +346,20 @@ def plain_text_single_user_prompt(
     lines: list[str] = [
         render_prompt("translation_task_plain_text.txt", **_prompt_context(target_language_name=target_language_name)),
         "",
-        "下面是一段待翻译正文。",
-        f"只输出这一段的最终{_target_language_name(target_language_name)}译文正文，不要输出编号、决策字段、结构化数据、标签、代码块或解释。",
-        "",
-        "【当前原文开始】",
-        item.source_for_prompt(),
-        "【当前原文结束】",
     ]
+    _append_context_blocks(lines, item)
+    lines.extend(["【当前原文开始】", item.source_for_prompt(), "【当前原文结束】"])
     _append_text_flow_guidance(lines, item)
     if item.style_hint:
         lines.append(f"风格提示：{item.style_hint}")
     if item.continuation_group:
         lines.append("这是跨栏或跨页续接正文的一部分，请结合上下文理解后直接输出这一整段的译文。")
-    _append_context_lines(lines, item)
+    _append_incomplete_source_guard(lines, item)
+    lines.append("")
+    lines.append(
+        f"{_plain_text_answer_instruction(target_language_name)}"
+        "不要输出编号、决策字段、结构化数据或代码块。"
+    )
     return "\n".join(lines).strip()
 
 

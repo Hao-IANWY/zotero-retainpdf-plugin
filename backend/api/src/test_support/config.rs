@@ -74,6 +74,8 @@ impl TestDirs {
             allowed_origins: Vec::new(),
             upload_max_bytes: 0,
             upload_max_pages: 0,
+            // 测试机磁盘该有 1 GiB；要测门禁的用例自己覆盖成大值。
+            min_free_disk_bytes: 1024 * 1024 * 1024,
             upload_processing: Default::default(),
             api_keys: HashSet::from(["test-key".to_string()]),
             max_running_jobs: 1,

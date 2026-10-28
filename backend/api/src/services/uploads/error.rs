@@ -14,6 +14,9 @@ pub(crate) enum UploadError {
     RepairUnavailable,
     #[error("PDF repair timed out")]
     RepairTimeout,
+    /// 数据目录所在磁盘剩余空间低于下限；消息里带剩余量，客户端按 `insufficient_storage` 提示。
+    #[error("{0}")]
+    InsufficientStorage(String),
     #[error("{0}")]
     Internal(&'static str),
     #[error("{0}")]

@@ -1,8 +1,8 @@
 use axum::middleware;
 use axum::Router;
 use tower_http::cors::CorsLayer;
-use tower_http::trace::TraceLayer;
 
+use crate::app::request_log::{assign_request_id, trace_layer};
 use crate::app::AppState;
 use crate::auth;
 use crate::routes::common::{method_not_allowed, unknown_route};
@@ -31,7 +31,9 @@ pub fn build_app(state: AppState) -> Router {
         // 浏览器 Origin 门禁必须在 CorsLayer 外侧：拒绝发生在 CORS 头注入
         // 之前,跨域攻击者连响应都读不到。见 `auth::origin_gate`。
         .layer(middleware::from_fn_with_state(state.clone(), auth::origin_gate))
-        .layer(TraceLayer::new_for_http())
+        // 请求日志和请求编号（见 `request_log.rs`）；编号在日志外面，span 建出来时编号已经定了。
+        .layer(trace_layer())
+        .layer(middleware::from_fn(assign_request_id))
         .with_state(state)
 }
 
@@ -41,7 +43,8 @@ pub fn build_simple_app(state: AppState) -> Router {
         .fallback(unknown_route)
         .layer(CorsLayer::permissive())
         .layer(middleware::from_fn_with_state(state.clone(), auth::origin_gate))
-        .layer(TraceLayer::new_for_http())
+        .layer(trace_layer())
+        .layer(middleware::from_fn(assign_request_id))
         .with_state(state)
 }
 

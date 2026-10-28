@@ -54,6 +54,9 @@ impl JobsdState {
 }
 
 /// 鉴权：与壳同源的 RETAIN_API_KEYS。仅监听回环，这层是纵深防御而非边界。
+///
+/// 没配 key 时放行：壳在匿名模式（未配置 RUST_API_KEYS）下给 jobsd 下发的是空 key，
+/// 这里若改成"没配就不放"，壳自己的内部调用会全部 401。要收紧得先给匿名模式生成一把内部 key。
 fn authorized(state: &JobsdState, headers: &HeaderMap) -> bool {
     if state.api_keys.is_empty() {
         return true;
@@ -61,7 +64,7 @@ fn authorized(state: &JobsdState, headers: &HeaderMap) -> bool {
     headers
         .get("X-API-Key")
         .and_then(|value| value.to_str().ok())
-        .map(|key| state.api_keys.contains(key.trim()))
+        .map(|key| retain_core::config::api_key_matches(&state.api_keys, key.trim()))
         .unwrap_or(false)
 }
 

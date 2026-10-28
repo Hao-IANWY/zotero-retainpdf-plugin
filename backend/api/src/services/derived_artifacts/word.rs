@@ -55,10 +55,9 @@ pub(crate) fn ensure_layout_docx(
     options: LayoutDocxOptions,
 ) -> Result<PathBuf, AppError> {
     let output_dir = job_artifacts_dir(data_root, job)?;
-    let output_docx = output_dir.join(format!(
-        "{}-layout-{}.docx",
-        job.job_id,
-        options.cache_suffix()
+    let output_docx = output_dir.join(super::layout_docx_file_name(
+        &job.job_id,
+        &options.cache_suffix(),
     ));
     // 译文 PDF 在的时候也算输入:收敛后的字号和行距是从它里面读回来的（见 Python 侧
     // `typography_readback`），它一重渲染这份 docx 就过期了。不在的时候导出走

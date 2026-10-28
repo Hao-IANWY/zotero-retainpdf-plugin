@@ -18,6 +18,15 @@ use crate::ocr_provider::{
 const RENDER_MODES: &[&str] = &["auto", "overlay", "typst", "typst_visual", "dual"];
 const FONT_UNIFY_MODES: &[&str] = &["role_min", "off"];
 
+// 数字参数的上限。以前只查下限，请求能写 `workers=100000` 一路传给 Python 的线程池和上游模型。
+// 上限都比正常用法宽得多：内置服务商的并发最多 100，超时默认 1800 秒。
+const MAX_TRANSLATION_WORKERS: i64 = 256;
+const MAX_TRANSLATION_BATCH_SIZE: i64 = 1000;
+const MAX_RENDER_COMPILE_WORKERS: i64 = 64;
+const MAX_RENDER_PDF_COMPRESS_DPI: i64 = 1200;
+/// 一周。
+const MAX_RUNTIME_TIMEOUT_SECONDS: i64 = 7 * 24 * 3600;
+
 pub fn validate_provider_credentials(input: &CreateJobInput) -> Result<(), AppError> {
     let provider_kind = require_supported_provider(input.ocr.provider.trim())
         .map_err(|err| AppError::bad_request(err.to_string()))?;
@@ -168,6 +177,25 @@ pub fn validate_translation_modes(input: &CreateJobInput) -> Result<(), AppError
         &input.translation.memory_mode,
         TRANSLATION_MEMORY_MODES,
     )?;
+    for (field, value, max) in [
+        (
+            "translation.workers",
+            input.translation.workers,
+            MAX_TRANSLATION_WORKERS,
+        ),
+        (
+            "translation.batch_size",
+            input.translation.batch_size,
+            MAX_TRANSLATION_BATCH_SIZE,
+        ),
+        (
+            "translation.classify_batch_size",
+            input.translation.classify_batch_size,
+            MAX_TRANSLATION_BATCH_SIZE,
+        ),
+    ] {
+        validate_at_most(field, value, max)?;
+    }
     Ok(())
 }
 
@@ -201,6 +229,16 @@ pub fn validate_render_options(input: &CreateJobInput) -> Result<(), AppError> {
             "render.pdf_compress_dpi must be greater than or equal to 0",
         ));
     }
+    validate_at_most(
+        "render.compile_workers",
+        input.render.compile_workers,
+        MAX_RENDER_COMPILE_WORKERS,
+    )?;
+    validate_at_most(
+        "render.pdf_compress_dpi",
+        input.render.pdf_compress_dpi,
+        MAX_RENDER_PDF_COMPRESS_DPI,
+    )?;
     validate_positive_finite(
         "render.body_font_size_factor",
         input.render.body_font_size_factor,
@@ -269,6 +307,16 @@ pub fn validate_runtime_limits(input: &CreateJobInput) -> Result<(), AppError> {
             "no_output_timeout_seconds must be zero (disabled) or a positive integer",
         ));
     }
+    validate_at_most(
+        "timeout_seconds",
+        input.runtime.timeout_seconds,
+        MAX_RUNTIME_TIMEOUT_SECONDS,
+    )?;
+    validate_at_most(
+        "no_output_timeout_seconds",
+        input.runtime.no_output_timeout_seconds,
+        MAX_RUNTIME_TIMEOUT_SECONDS,
+    )?;
     Ok(())
 }
 
@@ -403,6 +451,15 @@ fn validate_allowed_value(field: &str, value: &str, allowed: &[&str]) -> Result<
         "{field} must be one of: {}",
         allowed.join(", ")
     )))
+}
+
+fn validate_at_most(field: &str, value: i64, max: i64) -> Result<(), AppError> {
+    if value > max {
+        return Err(AppError::bad_request(format!(
+            "{field} must be at most {max}"
+        )));
+    }
+    Ok(())
 }
 
 fn validate_positive_finite(field: &str, value: f64) -> Result<(), AppError> {

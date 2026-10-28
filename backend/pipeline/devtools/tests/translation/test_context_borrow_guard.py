@@ -70,7 +70,7 @@ def test_plain_text_prompt_adds_no_borrow_guard_for_half_sentence() -> None:
     user_prompt = messages[1]["content"]
     assert "当前原文是不完整片段；译文必须保持同等不完整，不要用后文上下文补全。" in user_prompt
     assert HALF_SENTENCE_NO_BORROW_GUARD in user_prompt
-    assert "后文上下文（仅供理解，禁止翻译进输出）" in user_prompt
+    assert "【后文开始（仅供理解，禁止翻译进输出）】" in user_prompt
 
 
 def test_group_member_prompt_forbids_borrowing_for_incomplete_fragment() -> None:

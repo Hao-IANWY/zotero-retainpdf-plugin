@@ -1,8 +1,11 @@
 use std::num::NonZeroU64;
 
-use super::env_vars::{env_u32, env_u64};
+use super::env_vars::{env_optional_string, env_u32, env_u64};
 
 pub const DEFAULT_UPLOAD_MAX_BYTES: u64 = 512 * 1024 * 1024;
+
+/// 数据目录所在磁盘至少留多少空间才接新上传、新任务（MiB）。
+pub const DEFAULT_MIN_FREE_DISK_MIB: u64 = 1024;
 
 #[derive(Clone, Debug)]
 pub struct UploadProcessingConfig {
@@ -63,6 +66,8 @@ pub fn effective_upload_max_bytes(configured_max_bytes: u64) -> NonZeroU64 {
 pub struct UploadRuntimeConfig {
     pub upload_max_bytes: u64,
     pub upload_max_pages: u32,
+    /// 数据目录所在磁盘至少留多少空间（字节）；0 是不查。
+    pub min_free_disk_bytes: u64,
 }
 
 impl UploadRuntimeConfig {
@@ -70,6 +75,7 @@ impl UploadRuntimeConfig {
         Self {
             upload_max_bytes: env_u64("RUST_API_UPLOAD_MAX_BYTES", 0),
             upload_max_pages: env_u32("RUST_API_UPLOAD_MAX_PAGES", 0),
+            min_free_disk_bytes: min_free_disk_bytes_from_env(),
         }
     }
 
@@ -77,8 +83,18 @@ impl UploadRuntimeConfig {
         Self {
             upload_max_bytes: 0,
             upload_max_pages: 0,
+            min_free_disk_bytes: min_free_disk_bytes_from_env(),
         }
     }
+}
+
+/// `RUST_API_MIN_FREE_DISK_MB`：剩余空间低于它就不接新上传、新任务，默认
+/// [`DEFAULT_MIN_FREE_DISK_MIB`]，`0` 关掉检查。
+fn min_free_disk_bytes_from_env() -> u64 {
+    env_optional_string("RUST_API_MIN_FREE_DISK_MB")
+        .and_then(|value| value.parse::<u64>().ok())
+        .unwrap_or(DEFAULT_MIN_FREE_DISK_MIB)
+        .saturating_mul(1024 * 1024)
 }
 
 #[cfg(test)]
@@ -106,5 +122,20 @@ mod tests {
             effective_upload_max_bytes(0).get(),
             DEFAULT_UPLOAD_MAX_BYTES
         );
+    }
+
+    #[test]
+    fn min_free_disk_defaults_to_one_gib_and_zero_disables_it() {
+        let _guard = super::super::env_vars::env_test_lock();
+        std::env::remove_var("RUST_API_MIN_FREE_DISK_MB");
+        assert_eq!(
+            min_free_disk_bytes_from_env(),
+            DEFAULT_MIN_FREE_DISK_MIB * 1024 * 1024
+        );
+        std::env::set_var("RUST_API_MIN_FREE_DISK_MB", "0");
+        assert_eq!(min_free_disk_bytes_from_env(), 0, "0 关闭检查");
+        std::env::set_var("RUST_API_MIN_FREE_DISK_MB", "512");
+        assert_eq!(min_free_disk_bytes_from_env(), 512 * 1024 * 1024);
+        std::env::remove_var("RUST_API_MIN_FREE_DISK_MB");
     }
 }

@@ -1,7 +1,7 @@
-//! Background retention/cleanup for unbounded-growth DB state and orphaned
-//! upload files.
+//! Background retention/cleanup for unbounded-growth DB state, orphaned
+//! upload files, and on-demand derived caches.
 //!
-//! Two independent sweeps, both age + reference based and both disabled by
+//! Three independent sweeps, all age + reference based and all disabled by
 //! setting their retention env var to `0`:
 //!
 //! - `events` rows for jobs that have reached a terminal state
@@ -11,14 +11,18 @@
 //! - `uploads` rows (and their `uploads_dir/<upload_id>/` directory on disk)
 //!   are deleted once older than `RUST_API_ORPHAN_UPLOAD_RETENTION_HOURS`
 //!   (default 48) *and* no row in `jobs` references that `upload_id`.
+//! - derived caches (Word, side-by-side PDF, linearized PDF, page previews)
+//!   of terminal jobs are deleted once older than
+//!   `RUST_API_DERIVED_CACHE_RETENTION_DAYS` (default 0 = keep). They are
+//!   regenerated on the next request; see `services/derived_artifacts/retention.rs`.
 //!
 //! This module only knows about `Db` plus plain paths, not `AppState` — it
 //! is wired up from `app::state` (one-shot sweep at startup) and
 //! `app::server` (recurring sweep while the server is running).
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use anyhow::Result;
 use tracing::{info, warn};
@@ -48,6 +52,7 @@ fn cleanup_interval_from_config() -> Duration {
 pub struct RetentionSettings {
     pub events_retention_days: u64,
     pub orphan_upload_retention_hours: u64,
+    pub derived_cache_retention_days: u64,
 }
 
 impl RetentionSettings {
@@ -57,6 +62,10 @@ impl RetentionSettings {
             orphan_upload_retention_hours: env_u64_allow_zero(
                 "RUST_API_ORPHAN_UPLOAD_RETENTION_HOURS",
                 48,
+            ),
+            derived_cache_retention_days: env_u64_allow_zero(
+                "RUST_API_DERIVED_CACHE_RETENTION_DAYS",
+                0,
             ),
         }
     }
@@ -78,7 +87,7 @@ pub fn log_startup_settings(settings: &RetentionSettings) {
 
 pub fn log_startup_settings_with_interval(settings: &RetentionSettings, interval: Duration) {
     info!(
-        "retention cleanup: events_retention_days={} ({}), orphan_upload_retention_hours={} ({}), sweep_interval_secs={}",
+        "retention cleanup: events_retention_days={} ({}), orphan_upload_retention_hours={} ({}), derived_cache_retention_days={} ({}), sweep_interval_secs={}",
         settings.events_retention_days,
         if settings.events_retention_days == 0 {
             "disabled"
@@ -91,14 +100,20 @@ pub fn log_startup_settings_with_interval(settings: &RetentionSettings, interval
         } else {
             "enabled"
         },
+        settings.derived_cache_retention_days,
+        if settings.derived_cache_retention_days == 0 {
+            "disabled"
+        } else {
+            "enabled"
+        },
         interval.as_secs(),
     );
 }
 
-/// Runs one cleanup sweep (events, then orphaned uploads). Safe to call
+/// Runs one cleanup sweep (events, orphaned uploads, then derived caches). Safe to call
 /// repeatedly - each call re-evaluates retention windows against the
 /// current time, and the underlying deletes are idempotent.
-pub fn run_cleanup_once(settings: &RetentionSettings, db: &Db) -> Result<()> {
+pub fn run_cleanup_once(settings: &RetentionSettings, db: &Db, data_root: &Path) -> Result<()> {
     if settings.events_retention_days > 0 {
         let deleted = db.cleanup_expired_events(settings.events_retention_days)?;
         if deleted > 0 {
@@ -122,6 +137,28 @@ pub fn run_cleanup_once(settings: &RetentionSettings, db: &Db) -> Result<()> {
                 "retention cleanup: deleted {} orphaned upload record(s) older than {} hour(s), removed {removed_dirs} on-disk upload directory(ies)",
                 orphans.len(),
                 settings.orphan_upload_retention_hours
+            );
+        }
+    }
+
+    if settings.derived_cache_retention_days > 0 {
+        let cutoff = SystemTime::now()
+            .checked_sub(Duration::from_secs(
+                settings
+                    .derived_cache_retention_days
+                    .saturating_mul(24 * 3600),
+            ))
+            .unwrap_or(SystemTime::UNIX_EPOCH);
+        let pruned = crate::services::derived_artifacts::retention::prune_terminal_job_caches(
+            db, data_root, cutoff,
+        )?;
+        if pruned.files > 0 || pruned.failed > 0 {
+            info!(
+                "retention cleanup: removed {} derived cache file(s) ({} bytes) older than {} day(s); {} could not be removed",
+                pruned.files,
+                pruned.bytes,
+                settings.derived_cache_retention_days,
+                pruned.failed
             );
         }
     }
@@ -156,8 +193,9 @@ fn remove_upload_dir(stored_path: &str) -> bool {
 pub fn spawn_periodic_cleanup(
     settings: RetentionSettings,
     db: Arc<Db>,
+    data_root: Arc<PathBuf>,
 ) -> tokio::task::JoinHandle<()> {
-    spawn_periodic_cleanup_with_interval(settings, db, cleanup_interval_from_config())
+    spawn_periodic_cleanup_with_interval(settings, db, data_root, cleanup_interval_from_config())
 }
 
 /// Same as `spawn_periodic_cleanup` but with an explicit interval (e.g. from `AppConfig::cleanup`).
@@ -166,6 +204,7 @@ pub fn spawn_periodic_cleanup(
 pub fn spawn_periodic_cleanup_with_interval(
     settings: RetentionSettings,
     db: Arc<Db>,
+    data_root: Arc<PathBuf>,
     interval_duration: Duration,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
@@ -175,7 +214,7 @@ pub fn spawn_periodic_cleanup_with_interval(
         interval.tick().await;
         loop {
             interval.tick().await;
-            if let Err(error) = run_cleanup_once(&settings, &db) {
+            if let Err(error) = run_cleanup_once(&settings, &db, data_root.as_path()) {
                 warn!("retention cleanup sweep failed: {error:#}");
             }
         }

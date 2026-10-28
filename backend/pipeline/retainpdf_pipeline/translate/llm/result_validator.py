@@ -103,7 +103,14 @@ def _handle_quality_issue(
             source_text=state.source_text,
             translated_text=state.translated_text,
         )
-    if issue.kind in {"protocol_shell_output", "context_bleed"}:
+    if issue.kind == "math_braces_unbalanced":
+        raise MathDelimiterError(
+            state.item_id,
+            source_text=state.source_text,
+            translated_text=state.translated_text,
+            detail=issue.message,
+        )
+    if issue.kind in {"protocol_shell_output", "context_bleed", "self_correction_leak"}:
         raise TranslationProtocolError(
             state.item_id,
             source_text=state.source_text,

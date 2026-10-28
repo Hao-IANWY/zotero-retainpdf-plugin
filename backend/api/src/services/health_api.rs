@@ -1,5 +1,7 @@
 //! Application facade for liveness and readiness projections.
 
+use std::path::Path;
+
 use serde::Serialize;
 
 use crate::db::Db;
@@ -9,11 +11,25 @@ use crate::ocr_provider::supported_provider_keys;
 pub struct HealthApiDeps<'a> {
     db: &'a Db,
     jobsd_supervised: bool,
+    data_root: Option<&'a Path>,
+    min_free_disk_bytes: u64,
 }
 
 impl<'a> HealthApiDeps<'a> {
     pub fn new(db: &'a Db, jobsd_supervised: bool) -> Self {
-        Self { db, jobsd_supervised }
+        Self {
+            db,
+            jobsd_supervised,
+            data_root: None,
+            min_free_disk_bytes: 0,
+        }
+    }
+
+    /// 让 `/health` 报出数据目录所在磁盘的剩余空间；没有这一步就只报空。
+    pub fn with_disk(mut self, data_root: &'a Path, min_free_disk_bytes: u64) -> Self {
+        self.data_root = Some(data_root);
+        self.min_free_disk_bytes = min_free_disk_bytes;
+        self
     }
 }
 
@@ -25,7 +41,15 @@ pub struct HealthView {
     pub running_jobs: i64,
     pub provider_backends: Vec<String>,
     pub jobsd: &'static str,
+    pub disk: HealthDiskView,
     pub time: String,
+}
+
+#[derive(Serialize)]
+pub struct HealthDiskView {
+    pub free_bytes: Option<u64>,
+    pub min_free_bytes: u64,
+    pub low: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -71,7 +95,22 @@ pub fn build_health_view(deps: &HealthApiDeps<'_>) -> HealthView {
         running_jobs: running,
         provider_backends: supported_provider_keys(),
         jobsd: crate::runtime::jobsd_supervisor::jobsd_status_label(),
+        disk: build_disk_view(deps),
         time: now_iso(),
+    }
+}
+
+fn build_disk_view(deps: &HealthApiDeps<'_>) -> HealthDiskView {
+    let free_bytes = deps
+        .data_root
+        .and_then(crate::services::disk_space::free_space_bytes);
+    HealthDiskView {
+        low: matches!(
+            free_bytes,
+            Some(free) if deps.min_free_disk_bytes > 0 && free < deps.min_free_disk_bytes
+        ),
+        free_bytes,
+        min_free_bytes: deps.min_free_disk_bytes,
     }
 }
 

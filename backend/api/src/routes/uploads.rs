@@ -9,8 +9,8 @@ use crate::routes::common::{
     ApiMultipart, UploadRouteDeps,
 };
 use crate::services::uploads::api::{
-    admit_upload, commit_upload_view, stage_upload_field, store_upload as store_upload_service,
-    StagedUpload,
+    admit_upload, commit_upload_view, ensure_upload_disk_space, stage_upload_field,
+    store_upload as store_upload_service, StagedUpload,
 };
 use crate::AppState;
 
@@ -24,6 +24,7 @@ pub async fn upload_pdf(
         std::num::NonZeroU64::new(1024 * 1024).expect("multipart text limit is non-zero");
 
     let deps = build_upload_route_deps(&state);
+    ensure_upload_disk_space(&deps.uploads)?;
     let admission = admit_upload(&deps.uploads)?;
     let mut staged: Option<StagedUpload> = None;
     let mut developer_mode = false;
