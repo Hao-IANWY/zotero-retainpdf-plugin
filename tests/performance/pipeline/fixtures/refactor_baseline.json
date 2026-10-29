@@ -7,7 +7,7 @@
       },
       {
         "role": "user",
-        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n下面是一段待翻译正文。\n只输出这一段的最终简体中文译文正文，不要输出编号、决策字段、结构化数据、标签、代码块或解释。\n\n【当前原文开始】\nEnergy $E=mc^2$ remains conserved.\n【当前原文结束】\n前文上下文（仅供理解，禁止翻译进输出）：Earlier observations.\n后文上下文（仅供理解，禁止翻译进输出）：Later observations."
+        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n【前文开始（仅供理解，禁止翻译进输出）】\nEarlier observations.\n【前文结束】\n\n【后文开始（仅供理解，禁止翻译进输出）】\nLater observations.\n【后文结束】\n\n【当前原文开始】\nEnergy $E=mc^2$ remains conserved.\n【当前原文结束】\n\n现在直接输出【当前原文】的简体中文译文。第一个字就是译文本身，前面不加标题、标签或引导语，后面不加解释。不要输出编号、决策字段、结构化数据或代码块。"
       }
     ],
     "engine_identity": {
@@ -112,7 +112,7 @@
       },
       {
         "role": "user",
-        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n下面是一段待翻译正文。\n只输出这一段的最终简体中文译文正文，不要输出编号、决策字段、结构化数据、标签、代码块或解释。\n\n【当前原文开始】\nEnergy $E=mc^2$ remains conserved.\n【当前原文结束】\n前文上下文（仅供理解，禁止翻译进输出）：Earlier observations.\n后文上下文（仅供理解，禁止翻译进输出）：Later observations."
+        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n【前文开始（仅供理解，禁止翻译进输出）】\nEarlier observations.\n【前文结束】\n\n【后文开始（仅供理解，禁止翻译进输出）】\nLater observations.\n【后文结束】\n\n【当前原文开始】\nEnergy $E=mc^2$ remains conserved.\n【当前原文结束】\n\n现在直接输出【当前原文】的简体中文译文。第一个字就是译文本身，前面不加标题、标签或引导语，后面不加解释。不要输出编号、决策字段、结构化数据或代码块。"
       }
     ],
     "engine_identity": {
@@ -256,7 +256,7 @@
       },
       {
         "role": "user",
-        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n下面是一段待翻译正文。\n你只输出最终简体中文译文正文。\n\n【当前原文开始】\nEnergy $E=mc^2$ remains conserved.\n【当前原文结束】\n术语要求：\nenergy => 能量\n前文上下文（仅供理解，禁止翻译进输出）：Earlier observations.\n后文上下文（仅供理解，禁止翻译进输出）：Later observations."
+        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n【前文开始（仅供理解，禁止翻译进输出）】\nEarlier observations.\n【前文结束】\n\n【后文开始（仅供理解，禁止翻译进输出）】\nLater observations.\n【后文结束】\n\n【当前原文开始】\nEnergy $E=mc^2$ remains conserved.\n【当前原文结束】\n术语要求：\nenergy => 能量\n\n现在直接输出【当前原文】的简体中文译文。第一个字就是译文本身，前面不加标题、标签或引导语，后面不加解释。"
       }
     ],
     "engine_identity": {
@@ -291,7 +291,7 @@
       },
       {
         "role": "user",
-        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n下面是一段待翻译正文。\n按 system 指定的 JSON 协议返回译文。\n\n【当前原文开始】\nEnergy $E=mc^2$ remains conserved.\n【当前原文结束】\n术语要求：\nenergy => 能量\n前文上下文（仅供理解，禁止翻译进输出）：Earlier observations.\n后文上下文（仅供理解，禁止翻译进输出）：Later observations."
+        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n【前文开始（仅供理解，禁止翻译进输出）】\nEarlier observations.\n【前文结束】\n\n【后文开始（仅供理解，禁止翻译进输出）】\nLater observations.\n【后文结束】\n\n【当前原文开始】\nEnergy $E=mc^2$ remains conserved.\n【当前原文结束】\n术语要求：\nenergy => 能量\n\n按 system 指定的 JSON 协议返回【当前原文】的译文。"
       }
     ],
     "engine_identity": {
@@ -326,7 +326,7 @@
       },
       {
         "role": "user",
-        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n下面是一段待翻译正文。\n按 system 指定的 JSON 协议返回译文。\n\n【当前原文开始】\nEnergy $E=mc^2$ remains conserved.\n【当前原文结束】\n术语要求：\nenergy => 能量\n前文上下文（仅供理解，禁止翻译进输出）：Earlier observations.\n后文上下文（仅供理解，禁止翻译进输出）：Later observations."
+        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n【前文开始（仅供理解，禁止翻译进输出）】\nEarlier observations.\n【前文结束】\n\n【后文开始（仅供理解，禁止翻译进输出）】\nLater observations.\n【后文结束】\n\n【当前原文开始】\nEnergy $E=mc^2$ remains conserved.\n【当前原文结束】\n术语要求：\nenergy => 能量\n\n按 system 指定的 JSON 协议返回【当前原文】的译文。"
       }
     ],
     "engine_identity": {
@@ -361,7 +361,7 @@
       },
       {
         "role": "user",
-        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n下面是一段待翻译正文。\n你只输出最终简体中文译文正文。\n\n【当前原文开始】\nEnergy $E=mc^2$ remains conserved.\n【当前原文结束】\n术语要求：\nenergy => 能量\n前文上下文（仅供理解，禁止翻译进输出）：Earlier observations.\n后文上下文（仅供理解，禁止翻译进输出）：Later observations."
+        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n【前文开始（仅供理解，禁止翻译进输出）】\nEarlier observations.\n【前文结束】\n\n【后文开始（仅供理解，禁止翻译进输出）】\nLater observations.\n【后文结束】\n\n【当前原文开始】\nEnergy $E=mc^2$ remains conserved.\n【当前原文结束】\n术语要求：\nenergy => 能量\n\n现在直接输出【当前原文】的简体中文译文。第一个字就是译文本身，前面不加标题、标签或引导语，后面不加解释。"
       }
     ],
     "engine_identity": {
@@ -396,7 +396,7 @@
       },
       {
         "role": "user",
-        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n下面是若干段待翻译正文。\n请为每段输出一个 tagged block，除此之外不要输出结构化数据、代码块、解释或额外文字。\n严格格式：\n<<<ITEM item_id=对应的原文 ID>>>\n译文\n<<<END>>>\n\n原文 p001-a:\nEnergy $E=mc^2$ remains conserved.\n前文上下文（仅供理解，禁止翻译进输出）：Earlier observations.\n后文上下文（仅供理解，禁止翻译进输出）：Later observations.\n\n原文 p001-b:\nEnergy $E=mc^2$ remains conserved.\n前文上下文（仅供理解，禁止翻译进输出）：Earlier observations.\n后文上下文（仅供理解，禁止翻译进输出）：Later observations."
+        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n下面是若干段待翻译正文。\n请为每段输出一个 tagged block，除此之外不要输出结构化数据、代码块、解释或额外文字。\n严格格式：\n<<<ITEM item_id=对应的原文 ID>>>\n（这一段的译文正文，开头不加任何标签）\n<<<END>>>\n\n原文 p001-a:\nEnergy $E=mc^2$ remains conserved.\n前文上下文（仅供理解，禁止翻译进输出）：Earlier observations.\n后文上下文（仅供理解，禁止翻译进输出）：Later observations.\n\n原文 p001-b:\nEnergy $E=mc^2$ remains conserved.\n前文上下文（仅供理解，禁止翻译进输出）：Earlier observations.\n后文上下文（仅供理解，禁止翻译进输出）：Later observations."
       }
     ],
     "engine_identity": {
@@ -505,7 +505,7 @@
       },
       {
         "role": "user",
-        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n下面是一段待翻译正文。\n只输出这一段的最终简体中文译文正文，不要输出编号、决策字段、结构化数据、标签、代码块或解释。\n\n【当前原文开始】\nEnergy $E=mc^2$ remains conserved.\n【当前原文结束】\n前文上下文（仅供理解，禁止翻译进输出）：Earlier observations.\n后文上下文（仅供理解，禁止翻译进输出）：Later observations."
+        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n【前文开始（仅供理解，禁止翻译进输出）】\nEarlier observations.\n【前文结束】\n\n【后文开始（仅供理解，禁止翻译进输出）】\nLater observations.\n【后文结束】\n\n【当前原文开始】\nEnergy $E=mc^2$ remains conserved.\n【当前原文结束】\n\n现在直接输出【当前原文】的简体中文译文。第一个字就是译文本身，前面不加标题、标签或引导语，后面不加解释。不要输出编号、决策字段、结构化数据或代码块。"
       }
     ],
     "engine_identity": {
@@ -754,7 +754,7 @@
       },
       {
         "role": "user",
-        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n下面是一段待翻译正文。\n你只输出最终简体中文译文正文。\n\n【当前原文开始】\nEnergy $E=mc^2$ remains conserved.\n【当前原文结束】\n术语要求：\nenergy => 能量\n前文上下文（仅供理解，禁止翻译进输出）：Earlier observations.\n后文上下文（仅供理解，禁止翻译进输出）：Later observations."
+        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n【前文开始（仅供理解，禁止翻译进输出）】\nEarlier observations.\n【前文结束】\n\n【后文开始（仅供理解，禁止翻译进输出）】\nLater observations.\n【后文结束】\n\n【当前原文开始】\nEnergy $E=mc^2$ remains conserved.\n【当前原文结束】\n术语要求：\nenergy => 能量\n\n现在直接输出【当前原文】的简体中文译文。第一个字就是译文本身，前面不加标题、标签或引导语，后面不加解释。"
       }
     ],
     "engine_identity": {
@@ -789,7 +789,7 @@
       },
       {
         "role": "user",
-        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n下面是一段待翻译正文。\n按 system 指定的 JSON 协议返回译文。\n\n【当前原文开始】\nEnergy $E=mc^2$ remains conserved.\n【当前原文结束】\n术语要求：\nenergy => 能量\n前文上下文（仅供理解，禁止翻译进输出）：Earlier observations.\n后文上下文（仅供理解，禁止翻译进输出）：Later observations."
+        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n【前文开始（仅供理解，禁止翻译进输出）】\nEarlier observations.\n【前文结束】\n\n【后文开始（仅供理解，禁止翻译进输出）】\nLater observations.\n【后文结束】\n\n【当前原文开始】\nEnergy $E=mc^2$ remains conserved.\n【当前原文结束】\n术语要求：\nenergy => 能量\n\n按 system 指定的 JSON 协议返回【当前原文】的译文。"
       }
     ],
     "engine_identity": {
@@ -824,7 +824,7 @@
       },
       {
         "role": "user",
-        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n下面是一段待翻译正文。\n按 system 指定的 JSON 协议返回译文。\n\n【当前原文开始】\nEnergy $E=mc^2$ remains conserved.\n【当前原文结束】\n术语要求：\nenergy => 能量\n前文上下文（仅供理解，禁止翻译进输出）：Earlier observations.\n后文上下文（仅供理解，禁止翻译进输出）：Later observations."
+        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n【前文开始（仅供理解，禁止翻译进输出）】\nEarlier observations.\n【前文结束】\n\n【后文开始（仅供理解，禁止翻译进输出）】\nLater observations.\n【后文结束】\n\n【当前原文开始】\nEnergy $E=mc^2$ remains conserved.\n【当前原文结束】\n术语要求：\nenergy => 能量\n\n按 system 指定的 JSON 协议返回【当前原文】的译文。"
       }
     ],
     "engine_identity": {
@@ -859,7 +859,7 @@
       },
       {
         "role": "user",
-        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n下面是一段待翻译正文。\n你只输出最终简体中文译文正文。\n\n【当前原文开始】\nEnergy $E=mc^2$ remains conserved.\n【当前原文结束】\n术语要求：\nenergy => 能量\n前文上下文（仅供理解，禁止翻译进输出）：Earlier observations.\n后文上下文（仅供理解，禁止翻译进输出）：Later observations."
+        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n【前文开始（仅供理解，禁止翻译进输出）】\nEarlier observations.\n【前文结束】\n\n【后文开始（仅供理解，禁止翻译进输出）】\nLater observations.\n【后文结束】\n\n【当前原文开始】\nEnergy $E=mc^2$ remains conserved.\n【当前原文结束】\n术语要求：\nenergy => 能量\n\n现在直接输出【当前原文】的简体中文译文。第一个字就是译文本身，前面不加标题、标签或引导语，后面不加解释。"
       }
     ],
     "engine_identity": {
@@ -894,7 +894,7 @@
       },
       {
         "role": "user",
-        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n下面是若干段待翻译正文。\n请为每段输出一个 tagged block，除此之外不要输出结构化数据、代码块、解释或额外文字。\n严格格式：\n<<<ITEM item_id=对应的原文 ID>>>\n译文\n<<<END>>>\n\n原文 p001-a:\nEnergy $E=mc^2$ remains conserved.\n前文上下文（仅供理解，禁止翻译进输出）：Earlier observations.\n后文上下文（仅供理解，禁止翻译进输出）：Later observations.\n\n原文 p001-b:\nEnergy $E=mc^2$ remains conserved.\n前文上下文（仅供理解，禁止翻译进输出）：Earlier observations.\n后文上下文（仅供理解，禁止翻译进输出）：Later observations."
+        "content": "将以下原文翻译为简体中文。在不损失信息和技术精度的前提下保持凝练，长度尽可能接近原文。\n\n下面是若干段待翻译正文。\n请为每段输出一个 tagged block，除此之外不要输出结构化数据、代码块、解释或额外文字。\n严格格式：\n<<<ITEM item_id=对应的原文 ID>>>\n（这一段的译文正文，开头不加任何标签）\n<<<END>>>\n\n原文 p001-a:\nEnergy $E=mc^2$ remains conserved.\n前文上下文（仅供理解，禁止翻译进输出）：Earlier observations.\n后文上下文（仅供理解，禁止翻译进输出）：Later observations.\n\n原文 p001-b:\nEnergy $E=mc^2$ remains conserved.\n前文上下文（仅供理解，禁止翻译进输出）：Earlier observations.\n后文上下文（仅供理解，禁止翻译进输出）：Later observations."
       }
     ],
     "engine_identity": {

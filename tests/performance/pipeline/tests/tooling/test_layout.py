@@ -49,5 +49,9 @@ def test_shared_layout_resolves_probes_and_unchanged_baseline():
     # 12 个 direct_typst 用例的消息变了,16 个 placeholder 用例只有 prompt_hash 变。
     # 最近一次:引用规则改成「行内方括号 [n] 原样、原文是上标才输出上标」。同样逐例审阅:
     # 12 个用例的消息变化只落在那一行引用规则上,其余 16 个只有 prompt_hash 变,成员与其它指纹不变。
+    # 2026-10-29:逐段提示词改成「前后文 → 原文 → 最后一行作答要求」(防模型自己补「译文：」小节头),
+    # 批量 tagged 格式的「译文」占位写明「开头不加任何标签」。逐例审阅:13 个用例只变 user 消息——
+    # 11 个逐段用例把前后文挪到原文前面并加起止标记、删掉开头两行说明、末尾加作答要求;
+    # 2 个 */batch 只变那一行占位。system 消息、engine_identity 与成员不变,其余 19 个一字未动。
     baseline = HERE / "fixtures/refactor_baseline.json"
-    assert hashlib.sha256(baseline.read_bytes()).hexdigest() == "3b0630fde4c88481aa4545af02e4e0bea097eb133bcf7aec5d7c4cf15d36e2b0"
+    assert hashlib.sha256(baseline.read_bytes()).hexdigest() == "c2b84ea8d21053756acd49e7d72b0f8f373dcc86f226b7941a9e1988ac7661d0"
