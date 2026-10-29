@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img src="resources/brand/RetainPDF-github.svg" alt="RetainPDF" width="320" />
+  <img src="resources/brand/RetainPDF-logo.png" alt="RetainPDF" width="160" />
 </p>
 
 <p align="center">

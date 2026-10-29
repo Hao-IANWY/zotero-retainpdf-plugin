@@ -4,3 +4,15 @@ contracts/src/library-books.ts text eol=lf
 # Shell 脚本必须以 LF 进容器：CRLF 会让 shebang 变成 `#!/usr/bin/env sh\r`，
 # Linux 下报 "No such file or directory" 并以 127 退出（entrypoint 起不来）。
 *.sh text eol=lf
+
+# 图片/文档等二进制文件：禁止行尾归一化，否则 PNG 头里的 CRLF 会被改坏。
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.xpi binary
+*.woff binary
+*.woff2 binary

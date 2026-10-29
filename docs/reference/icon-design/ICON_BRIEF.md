@@ -221,7 +221,7 @@ docs/reference/icon-design/
 
 - 阅读器：大量 `lucide-react`（ModeTabs / Fab / Close / Selection）。  
 - 主页：大量内联 `<svg>`（TopTabs / BottomBar / Badge / Toolbar）。  
-- 品牌：`frontend/web/src/assets/RetainPDF-logo.svg`（Logo 另算，不在本清单强制范围）。  
+- 品牌：`resources/brand/RetainPDF-logo.png`（Logo 另算，不在本清单强制范围）。  
 - 阶段动效：旧 Lottie 资产已退役，见 §1.3。
 
 有问题可以直接在 `deliverables/` 旁加 `notes.md` 写你的命名或变体说明。

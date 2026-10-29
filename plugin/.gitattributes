@@ -1,1 +1,14 @@
 * text=auto eol=lf
+
+# 二进制资产不能走行尾归一化：PNG 头里的 CRLF 被改成 LF 会直接损坏图片。
+# 本文件在 plugin/ 下，优先级高于仓库根的同名规则。
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.xpi binary
+*.woff binary
+*.woff2 binary
