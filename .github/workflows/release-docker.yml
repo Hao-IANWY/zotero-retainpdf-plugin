@@ -286,6 +286,10 @@ jobs:
     if: needs.resolve.outputs.mode == 'build'
     permissions:
       contents: read
+      # 被调的 build-docker-images 推 GHCR 需要 packages:write；
+      # caller 的 job 权限是被调 workflow 的上限，这里必须放开。
+      # 少了这一行，tag push 会在 run 创建阶段直接 startup_failure（v0.1.9 起如此）。
+      packages: write
     uses: ./.github/workflows/build-docker-images.yml
     with:
       version: ${{ needs.prepare.outputs.version }}
