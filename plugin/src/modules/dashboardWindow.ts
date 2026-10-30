@@ -54,14 +54,15 @@ export function registerDashboardEntry(win: _ZoteroTypes.MainWindow) {
   btn.id = TOOLBAR_BUTTON_ID;
   btn.classList.add("zotero-tb-button");
   btn.setAttribute("tooltiptext", getString("dashboard-window-title"));
-  // image 属性 = favicon 兜底(经实测两主题可见);list-style-image = 专属
-  // monitor.svg(自带明暗两套描边)。双保险:Zotero 7 工具栏对两种图标机制
-  // 的覆盖随版本变,只设一种有过不显示的先例(v0.1.8)。
+  // image 属性与 list-style-image 都指向品牌 logo favicon@0.5x.png。
+  // 双保险:Zotero 7 工具栏对两种图标机制的覆盖随版本变,只设一种有过
+  // 不显示的先例(v0.1.8)。v0.1.14 起工具栏弃用 monitor.svg 改用品牌
+  // logo(老板拍板,与插件管理器/中控台图标统一)。
   btn.setAttribute(
     "image",
     `chrome://${config.addonRef}/content/icons/favicon@0.5x.png`,
   );
-  btn.style.listStyleImage = `url("chrome://${config.addonRef}/content/ui/icons/monitor.svg")`;
+  btn.style.listStyleImage = `url("chrome://${config.addonRef}/content/icons/favicon@0.5x.png")`;
   btn.addEventListener("command", () => openDashboardWindow());
   const searchBox = doc.getElementById("zotero-tb-search");
   const before =

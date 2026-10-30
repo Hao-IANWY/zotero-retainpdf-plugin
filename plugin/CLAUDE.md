@@ -27,8 +27,9 @@ RetainPDF 的 Zotero 7+ 客户端插件（含 Zotero 10）（TypeScript，zotero
   全在 TS bundle。UI 资产层在 `addon/content/ui/`：`tokens.css` 是唯一的
   颜色出处（语义对齐网页端 `_contract.css`，浅色 classic/深色 night，
   `--rp-` 前缀，组件禁止写死颜色）；图标是 `ui/icons/` 的 16×16
-  stroke SVG，页面内经 mask-image + currentColor 上色，工具栏用自带
-  明暗媒体查询的 `monitor.svg`。入口唯一 = 搜索栏右侧按钮
+  stroke SVG，页面内经 mask-image + currentColor 上色，工具栏 v0.1.14
+  起与品牌图标统一用 `content/icons/favicon@0.5x.png`（monitor.svg 已删）。
+  入口唯一 = 搜索栏右侧按钮
   （`#zotero-items-toolbar` 注入，`zotero-tb-search` 右邻；Zotero 7 没有
   `#zotero-toolbar`，菜单一律不挂）；窗口单例聚焦、几何记忆 pref
   （`dashboardWindow`）。
