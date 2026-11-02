@@ -18,10 +18,10 @@ RetainPDF 的 Zotero 7+ 客户端插件（含 Zotero 10）（TypeScript，zotero
   （prefs 前置）。
 
 - 中控台窗口（`src/modules/dashboardWindow.ts` + `dashboardScript.ts` +
-  `addon/content/dashboard/`）：原生页面路线——`openDialog` 直开 chrome://
-  自带 `dashboard.xhtml`（preferences.xhtml 同管线），数据走
-  `RetainPdfClient.listJobs` + SSE，**不再内嵌现网监控台 HTML**（iframe 路线
-  v0.1.7–v0.1.10 的结构性问题与转向结论见
+  `dashboardViz.ts` + `addon/content/dashboard/`）：原生页面路线——
+  `openDialog` 直开 chrome:// 自带 `dashboard.xhtml`（preferences.xhtml
+  同管线），数据走 `RetainPdfClient.listJobs` + SSE，**不再内嵌现网监控台
+  HTML**（iframe 路线 v0.1.7–v0.1.10 的结构性问题与转向结论见
   `docs/ops/planning/zotero-native-dashboard.md`）。窗口零内联脚本：新开
   chrome 窗口作用域没有 Zotero 全局，load/unload 监听由开窗方挂，页面逻辑
   全在 TS bundle。UI 资产层在 `addon/content/ui/`：`tokens.css` 是唯一的
@@ -33,6 +33,19 @@ RetainPDF 的 Zotero 7+ 客户端插件（含 Zotero 10）（TypeScript，zotero
   （`#zotero-items-toolbar` 注入，`zotero-tb-search` 右邻；Zotero 7 没有
   `#zotero-toolbar`，菜单一律不挂）；窗口单例聚焦、几何记忆 pref
   （`dashboardWindow`）。
+- 中控台三维流水线视图（网页端 pipeline-viz 移植，2026-11-02）：
+  `src/pipelineViz/entry.ts` 是第二个 esbuild 入口 → 懒 chunk
+  `content/scripts/{addonRef}-pipeline.js`（three + 场景层），**主 bundle
+  零 three**（对齐网页端门禁；主 bundle 对它只允许 `import type`）；
+  首次切「三维」时 `dashboardViz` 注入 `<script>` 加载到中控台窗口作用域
+  （three 的 document/rAF 属于该窗口，切勿改回主 realm 调用）。场景代码在
+  `src/pipelineViz/scene/`（从网页端逐文件搬运，改动要回填两仓），
+  `scene-model.ts` 留主 bundle 且文案全部走 FTL（站名/一句话/活动行不拼
+  中文硬编码）。传送带资产在 `addon/content/pipeline-viz/conveyor/`（含
+  THREE-LICENSE，许可文件必须随包）。数据纪律：五站映射要实时
+  `display_stage`，列表摘要不够——聚焦任务每拍补 `getJob`；SSE 只取
+  lane=main/diagnostic。WebGL 缺失/上下文丢失 → 降级回列表并禁用三维
+  切换按钮，不自动恢复。实施细节见规划文档 §8。
 - 密钥输入框一律明文（`type="text"`）：Gecko 原生 reveal-password 眼睛与
   插件注入眼睛会叠加成两只，2026-10-14 老板拍板全明文，禁止再引回
   `type="password"` 或任何显隐切换按钮。

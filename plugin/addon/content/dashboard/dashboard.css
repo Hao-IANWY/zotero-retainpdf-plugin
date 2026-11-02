@@ -440,6 +440,48 @@
   display: none;
 }
 
+/* ---- 视图切换(列表 / 三维流水线) ---- */
+
+.rp-dash-viewtoggle {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: auto;
+  margin-right: 10px;
+  padding: 2px;
+  border: 1px solid var(--rp-line);
+  border-radius: var(--rp-radius-sm);
+  background: var(--rp-surface);
+}
+
+.rp-dash-viewtoggle[hidden] {
+  display: none;
+}
+
+.rp-dash-viewtoggle-btn {
+  min-height: 24px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--rp-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 160ms var(--rp-ease-out),
+    color 160ms var(--rp-ease-out);
+}
+
+.rp-dash-viewtoggle-btn:hover {
+  color: var(--rp-ink);
+}
+
+.rp-dash-viewtoggle-btn[aria-pressed="true"] {
+  background: var(--rp-paper);
+  color: var(--rp-ink);
+  box-shadow: var(--rp-shadow-sm);
+}
+
 /* ---- 状态视图(加载 / 失败 / 空) ---- */
 
 .rp-dash-state {

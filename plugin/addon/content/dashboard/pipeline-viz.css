@@ -1,0 +1,352 @@
+/* ============================================================
+   RetainPDF 中控台 —— 三维流水线面板与悬浮层
+   从网页端 pipeline-viz.css 移植（同一作者仓库间搬运）：
+   类名换 rp-viz-* 前缀，颜色一律改喂 ui/tokens.css 的 var(--rp-*)，
+   尺寸由 rem 折成 px（中控台根字号 13px，rem 基准不可控）。
+   三维画面本身由引擎画进 canvas，这里只管面板布局、
+   轨道/队列/活动卡片、工具条与机位坞。
+   ============================================================ */
+
+.rp-viz-panel {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 420px;
+  border-radius: var(--rp-radius-md);
+  border: 1px solid var(--rp-line);
+  background: var(--rp-paper);
+  overflow: hidden;
+  outline: none;
+}
+
+.rp-viz-panel[hidden] {
+  display: none;
+}
+
+.rp-viz-panel:focus-visible {
+  box-shadow: 0 0 0 2px var(--rp-accent);
+}
+
+.rp-viz-viewport {
+  position: absolute;
+  inset: 0;
+}
+
+.rp-viz-viewport canvas {
+  display: block;
+}
+
+.rp-viz-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.rp-viz-overlay > * {
+  pointer-events: auto;
+}
+
+.rp-viz-summary {
+  max-width: 22rem;
+  border-radius: 10px;
+  border: 1px solid var(--rp-line);
+  background: var(--rp-paper);
+  padding: 10px 12px;
+  box-shadow: var(--rp-shadow-sm);
+}
+
+.rp-viz-job {
+  margin: 0 0 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--rp-accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rp-viz-summary-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rp-viz-headline {
+  font-size: 13px;
+  color: var(--rp-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rp-viz-percent {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--rp-muted);
+}
+
+.rp-viz-progress-track {
+  margin-top: 8px;
+  height: 6px;
+  border-radius: var(--rp-radius-full);
+  background: var(--rp-surface);
+  overflow: hidden;
+}
+
+.rp-viz-progress-bar {
+  display: block;
+  height: 100%;
+  border-radius: var(--rp-radius-full);
+  background: var(--rp-accent);
+  transform-origin: left center;
+  transition: transform 180ms ease-out;
+}
+
+.rp-viz-rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-width: 30rem;
+}
+
+.rp-viz-rail-step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--rp-radius-full);
+  border: 1px solid var(--rp-line);
+  background: var(--rp-paper);
+  padding: 4px 10px;
+  font-size: 11px;
+  color: var(--rp-ink);
+}
+
+.rp-viz-rail-state {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--rp-radius-full);
+  background: var(--rp-faint);
+}
+
+.rp-viz-rail-step[data-phase="active"] .rp-viz-rail-state {
+  background: var(--rp-accent);
+  animation: rp-viz-breathe 1.6s ease-in-out infinite;
+}
+
+.rp-viz-rail-step[data-phase="done"] .rp-viz-rail-state {
+  background: var(--rp-ok);
+}
+
+.rp-viz-rail-step[data-phase="failed"] {
+  border-color: var(--rp-danger);
+}
+
+.rp-viz-rail-step[data-phase="failed"] .rp-viz-rail-state {
+  background: var(--rp-danger);
+}
+
+.rp-viz-rail-label {
+  font-weight: 600;
+}
+
+.rp-viz-rail-detail {
+  color: var(--rp-muted);
+}
+
+.rp-viz-queue,
+.rp-viz-activity {
+  max-width: 18rem;
+  border-radius: 10px;
+  border: 1px solid var(--rp-line);
+  background: var(--rp-paper);
+  padding: 8px 10px;
+  box-shadow: var(--rp-shadow-sm);
+}
+
+.rp-viz-queue-caption,
+.rp-viz-activity-caption {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--rp-muted);
+}
+
+.rp-viz-queue-list,
+.rp-viz-activity-list {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rp-viz-queue-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 1px 2px;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--rp-ink);
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.rp-viz-queue-item:hover {
+  background: var(--rp-surface);
+}
+
+.rp-viz-queue-item[data-focused="true"] .rp-viz-queue-title {
+  color: var(--rp-accent);
+  font-weight: 600;
+}
+
+.rp-viz-queue-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rp-viz-queue-pages,
+.rp-viz-queue-more,
+.rp-viz-activity-item {
+  color: var(--rp-muted);
+}
+
+.rp-viz-queue-pages {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.rp-viz-queue-more {
+  list-style: none;
+}
+
+.rp-viz-activity-item {
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rp-viz-toolbar {
+  margin-top: auto;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.rp-viz-tool-button {
+  border-radius: var(--rp-radius-full);
+  border: 1px solid var(--rp-line-strong);
+  background: var(--rp-paper);
+  padding: 4px 10px;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--rp-ink);
+  cursor: pointer;
+}
+
+.rp-viz-tool-button:hover {
+  background: var(--rp-surface-hover);
+}
+
+.rp-viz-tool-button[aria-pressed="true"] {
+  background: var(--rp-accent);
+  color: var(--rp-on-accent);
+  border-color: transparent;
+}
+
+.rp-viz-camera-dock {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.rp-viz-camera-button {
+  border-radius: 8px;
+  border: 1px solid var(--rp-line-strong);
+  background: var(--rp-paper);
+  padding: 5px 10px;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--rp-ink);
+  cursor: pointer;
+}
+
+.rp-viz-camera-button:hover {
+  background: var(--rp-surface-hover);
+}
+
+.rp-viz-camera-button[aria-pressed="true"] {
+  background: var(--rp-ink);
+  color: var(--rp-bg);
+  border-color: transparent;
+}
+
+.rp-viz-hint {
+  position: absolute;
+  left: 12px;
+  bottom: 8px;
+  margin: 0;
+  font-size: 10px;
+  color: var(--rp-muted);
+  opacity: 0.75;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.rp-viz-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--rp-paper);
+  color: var(--rp-muted);
+  font-size: 12px;
+  z-index: 2;
+}
+
+.rp-viz-loading[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rp-viz-rail-step[data-phase="active"] .rp-viz-rail-state {
+    animation: none;
+  }
+
+  .rp-viz-progress-bar {
+    transition: none;
+  }
+}
+
+@keyframes rp-viz-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
+  }
+}

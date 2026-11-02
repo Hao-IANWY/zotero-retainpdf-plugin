@@ -35,6 +35,15 @@ export default defineConfig({
         target: "firefox115",
         outfile: `.scaffold/build/addon/content/scripts/${pkg.config.addonRef}.js`,
       },
+      {
+        // 三维流水线懒 chunk（src/pipelineViz/entry.ts）：three + 场景层全在这里，
+        // 主 bundle 零 three。中控台首次切「三维」时由 dashboardViz 注入
+        // <script> 加载到窗口作用域，对齐网页端「主 bundle 零 three」的门禁。
+        entryPoints: ["src/pipelineViz/entry.ts"],
+        bundle: true,
+        target: "firefox115",
+        outfile: `.scaffold/build/addon/content/scripts/${pkg.config.addonRef}-pipeline.js`,
+      },
     ],
   },
 

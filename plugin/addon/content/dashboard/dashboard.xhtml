@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet href="../ui/tokens.css" type="text/css"?> <?xml-stylesheet
-href="dashboard.css" type="text/css"?>
+href="dashboard.css" type="text/css"?> <?xml-stylesheet href="pipeline-viz.css"
+type="text/css"?>
 <!DOCTYPE window>
 <!-- 中控台页面骨架(docs/ops/planning/zotero-native-dashboard.md)。
      GitHub 式布局(2026-10-14 老板钦定):左侧导航栏切换分组(计数徽章
@@ -48,6 +49,26 @@ href="dashboard.css" type="text/css"?>
             class="rp-dash-view-label"
             id="rp-dash-view-label"
           ></html:span>
+          <html:div
+            class="rp-dash-viewtoggle"
+            id="rp-dash-viewtoggle"
+            role="group"
+          >
+            <html:button
+              class="rp-dash-viewtoggle-btn"
+              id="rp-dash-view-list"
+              data-view="list"
+              type="button"
+              aria-pressed="true"
+            ></html:button>
+            <html:button
+              class="rp-dash-viewtoggle-btn"
+              id="rp-dash-view-spatial"
+              data-view="spatial"
+              type="button"
+              aria-pressed="false"
+            ></html:button>
+          </html:div>
           <html:button
             class="rp-dash-clear"
             id="rp-dash-clear"
@@ -57,6 +78,22 @@ href="dashboard.css" type="text/css"?>
             <html:span class="rp-icon rp-icon--clear"></html:span>
             <html:span id="rp-dash-clear-label"></html:span>
           </html:button>
+        </html:div>
+        <!-- 三维流水线面板(网页端 pipeline-viz 移植):壳在这里,悬浮层/工具条/
+             机位坞 DOM 由 dashboardViz 构建;引擎画布由懒 chunk(注入窗口的
+             retainpdf-pipeline.js)创建并挂进 viewport。 -->
+        <html:div class="rp-viz-panel" id="rp-dash-viz" hidden="hidden">
+          <html:div
+            class="rp-viz-viewport"
+            id="rp-dash-viz-viewport"
+          ></html:div>
+          <html:div class="rp-viz-overlay" id="rp-dash-viz-overlay"></html:div>
+          <html:p class="rp-viz-hint" id="rp-dash-viz-hint"></html:p>
+          <html:div
+            class="rp-viz-loading"
+            id="rp-dash-viz-loading"
+            hidden="hidden"
+          ></html:div>
         </html:div>
         <html:div class="rp-dash-state" id="rp-dash-loading">
           <html:span class="rp-icon rp-icon--spinner"></html:span>

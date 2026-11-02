@@ -328,3 +328,51 @@ CSS class 驱动（不用 SMIL）。视觉参照 lucide 同名义（ISC 许可�
   }
 }
 ```
+
+## 8. 三维流水线视图（2026-11-02 增补实施记录）
+
+网页端 pipeline-viz（retain-pdf-web `70c363b`，三维流水线进「进度」Tab）同日
+移植进中控台：内容栏新增「列表 / 三维」切换，三维视图展示五台设备
+（文档准备 → OCR → 翻译 → 版面重建 → 完成输出）+ 传送带的实时状态，
+悬浮层含聚焦任务摘要、五站轨道、等待队列（可点击切换聚焦）、最近活动、
+机位坞与视图工具条。
+
+### 8.1 结构：懒 chunk 隔离（对齐网页端门禁）
+
+- `src/pipelineViz/entry.ts` 是第二个 esbuild 入口，产出
+  `content/scripts/retainpdf-pipeline.js`（three 0.180 + 场景层，
+  ~1.8MB 未压缩）；主 bundle 零 three（`import type` 只借类型）。
+- 首次切「三维」时由 `dashboardViz` 注入 `<script>` 加载到**中控台窗口**
+  作用域：three 的 document/rAF/ResizeObserver 因此天然属于该窗口，
+  canvas 创建、事件装配与关窗停帧全部同源，无跨 realm DOM 收养。
+- 场景层（`src/pipelineViz/scene/`：engine/cameras/materials/textures/
+  stations/* 等）从网页端逐文件搬运；`scene-model.ts`（纯函数派生）留在
+  主 bundle 并做了 i18n 改造——模型只给结构化字段（headline kind、
+  activity 的 title+status），站名/文案经 FTL 出双语。
+- 传送带真实资产（gz 资源包 + 许可文件）在
+  `addon/content/pipeline-viz/conveyor/`；loader/asset 移植成
+  `conveyorAsset.ts` 直接进 chunk（chrome:// + fetch + DecompressionStream，
+  基址由参数传入），任一环节失败静默回退参数化传送带。
+
+### 8.2 数据纪律
+
+- 五站映射依赖实时 `display_stage`，列表接口 `include_live_stage=false`
+  只有存储摘要——三维视图激活时每拍（3s）对聚焦任务补一次 `getJob` 详情；
+  统一百分比与阶段说明优先 SSE（lane=main/diagnostic），快照兜底。
+- 聚焦任务：进入视图时按 running > queued > 最新 选择，粘住不自动切换
+  （并行任务经队列点击切换）；任务被清空删除后自动重选。
+- OCR 失败归属：以 `{job_id}-ocr` 子任务的 failure.stage 兜底（同网页端）。
+
+### 8.3 降级与生命周期
+
+- WebGL 探测失败 / 引擎初始化异常 / 上下文丢失 → 视图切回列表、切换按钮
+  禁用并带原因 tooltip，不自动恢复（网页端 onUnavailable 同款语义）。
+- 切回列表只 dispose 引擎（rAF/GPU 停），悬浮层与接线保留供再进入；
+  关窗 destroyDashboard 全量收尾。
+
+### 8.4 验收口径
+
+- 本机门禁：`npm run build`（双 bundle + tsc）与 lint 全绿；scene-model
+  纯函数 17 项逻辑断言通过（站相位/边界/失败归属/队列排序/引擎输入）。
+- 真机验收（待做）：Zotero 7/10 明暗主题下三维视图开箱、传送带资产加载、
+  SSE 实时推进度、WebGL 不可用环境降级回列表。

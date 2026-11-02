@@ -3,6 +3,16 @@ import { getString } from "../utils/locale";
 import { getPref } from "../utils/prefs";
 import { appendPluginLog } from "../utils/log";
 import { RetainPdfClient } from "../api";
+import {
+  enterViz,
+  exitViz,
+  updateViz,
+  refreshVizFocusDetail,
+  pokeViz,
+  disposeViz,
+  renderViewToggle,
+} from "./dashboardViz";
+import type { VizState } from "./dashboardViz";
 
 /**
  * 中控台页面逻辑(docs/ops/planning/zotero-native-dashboard.md)。
@@ -63,7 +73,7 @@ interface LiveProgress {
   stageDetail?: string;
 }
 
-interface DashState {
+export interface DashState {
   /** 代际号:每次请求 +1,回包比对防旧请求覆盖新状态/关窗后回写。 */
   generation: number;
   pollTimer: number | null;
@@ -77,6 +87,9 @@ interface DashState {
   sseClosers: Map<string, () => void>;
   cards: Map<string, HTMLElement>;
   navCounts: Partial<Record<FilterKey, HTMLElement>>;
+  /** 三维流水线视图(网页端 pipeline-viz 移植):true = 内容区显示三维面板。 */
+  vizActive: boolean;
+  viz: VizState | null;
 }
 
 const states = new WeakMap<Window, DashState>();
@@ -119,6 +132,8 @@ export function initDashboard(win: Window): void {
     sseClosers: new Map(),
     cards: new Map(),
     navCounts: {},
+    vizActive: false,
+    viz: null,
   };
   states.set(win, state);
 
@@ -130,11 +145,12 @@ export function initDashboard(win: Window): void {
   void loadJobs(win, state);
 }
 
-/** 收尾:轮询与 SSE 全收,状态解除引用。开窗方在 unload 时调用。 */
+/** 收尾:轮询与 SSE 全收,三维引擎一并 dispose。开窗方在 unload 时调用。 */
 export function destroyDashboard(win: Window): void {
   const state = states.get(win);
   if (!state) return;
   state.generation += 1;
+  disposeViz(win, state);
   try {
     if (state.pollTimer !== null) win.clearTimeout(state.pollTimer);
   } catch {
@@ -167,6 +183,9 @@ function fillStaticText(win: Window): void {
   set("rp-dash-clear-label", "dashboard-clear");
   const clearBtn = byId(win, "rp-dash-clear");
   clearBtn?.setAttribute("title", getString("dashboard-clear-tip"));
+  set("rp-dash-view-list", "dashboard-view-list");
+  set("rp-dash-view-spatial", "dashboard-view-spatial");
+  set("rp-dash-viz-loading", "dashboard-viz-loading");
   setSubtitle(win, 0);
 }
 
@@ -215,8 +234,41 @@ function wireEvents(win: Window, state: DashState): void {
       "[data-filter]",
     ) as HTMLElement | null;
     const filter = target?.dataset.filter as FilterKey | undefined;
-    if (!filter || filter === state.filter) return;
+    if (!filter) return;
+    // 三维视图下点导航 = 回列表看该分组(三维视图不随过滤分组变化)。
+    if (state.vizActive) {
+      state.vizActive = false;
+      exitViz(win, state);
+      renderViewToggle(win, state);
+    }
+    if (filter === state.filter) {
+      renderAll(win, state);
+      return;
+    }
     state.filter = filter;
+    renderAll(win, state);
+  });
+  byId(win, "rp-dash-viewtoggle")?.addEventListener("click", (event) => {
+    const button = (event.target as HTMLElement | null)?.closest?.(
+      "[data-view]",
+    ) as HTMLElement | null;
+    const view = button?.dataset.view as "list" | "spatial" | undefined;
+    if (!view) return;
+    const nextActive = view === "spatial";
+    if (nextActive === state.vizActive) return;
+    if (nextActive && state.viz?.unavailable) return;
+    state.vizActive = nextActive;
+    if (nextActive) {
+      enterViz(win, state, () => {
+        // 降级回调:WebGL 缺失/上下文丢失,收三维回列表。
+        state.vizActive = false;
+        renderViewToggle(win, state);
+        renderAll(win, state);
+      });
+    } else {
+      exitViz(win, state);
+    }
+    renderViewToggle(win, state);
     renderAll(win, state);
   });
   byId(win, "rp-dash-list")?.addEventListener("click", (event) => {
@@ -264,7 +316,12 @@ async function loadJobs(win: Window, state: DashState): Promise<void> {
     state.error = "";
     state.hasLoaded = true;
     renderAll(win, state);
-    syncWatchers(state, client);
+    syncWatchers(win, state, client);
+    // 三维视图:每拍补拉聚焦任务详情(display_stage 实时来源)并重算一拍。
+    if (state.vizActive) {
+      refreshVizFocusDetail(win, state);
+      updateViz(win, state);
+    }
   } catch (error) {
     if (!alive(win, state, generation)) return;
     state.error = reason(error);
@@ -287,7 +344,11 @@ function scheduleNext(win: Window, state: DashState): void {
 }
 
 /** 活跃任务 SSE:新出现的活跃任务开流,不再活跃的收流。 */
-function syncWatchers(state: DashState, client: RetainPdfClient): void {
+function syncWatchers(
+  win: Window,
+  state: DashState,
+  client: RetainPdfClient,
+): void {
   const activeIds = new Set(
     state.items
       .filter((job) => isActive(job?.status))
@@ -316,6 +377,7 @@ function syncWatchers(state: DashState, client: RetainPdfClient): void {
           stageDetail,
         });
         pokeCard(state, jobId);
+        pokeViz(win, state, jobId);
       },
       () => {
         // end 只是信号:收流,终态事实交给下一拍轮询
@@ -415,6 +477,13 @@ function renderAll(win: Window, state: DashState): void {
   updateNavCounts(win, state);
   renderContentbar(win, state);
 
+  // 三维视图:面板优先于列表(分组过滤是列表语义,三维总览不随分组收窄)。
+  if (state.vizActive && !state.viz?.unavailable) {
+    showView(win, "viz");
+    updateViz(win, state);
+    return;
+  }
+
   const items = filteredItems(state);
   if (items.length === 0) {
     const emptyEl = byId(win, "rp-dash-list-empty");
@@ -458,7 +527,7 @@ function updateNavCounts(win: Window, state: DashState): void {
   });
 }
 
-/** 内容区顶栏:当前视图名 + 清空按钮(仅终态视图且非空时可见)。 */
+/** 内容区顶栏:当前视图名 + 列表/三维切换 + 清空按钮(仅列表终态视图可见)。 */
 function renderContentbar(win: Window, state: DashState): void {
   const label = byId(win, "rp-dash-view-label");
   if (label) label.textContent = filterLabel(state.filter);
@@ -466,7 +535,9 @@ function renderContentbar(win: Window, state: DashState): void {
   if (clearBtn) {
     const clearing = state.clearingGroup !== null;
     const show =
-      CLEARABLE_FILTERS.has(state.filter) && filteredItems(state).length > 0;
+      !state.vizActive &&
+      CLEARABLE_FILTERS.has(state.filter) &&
+      filteredItems(state).length > 0;
     clearBtn.hidden = !show;
     clearBtn.disabled = clearing;
     const clearLabel = byId(win, "rp-dash-clear-label");
@@ -480,7 +551,7 @@ function renderContentbar(win: Window, state: DashState): void {
   }
 }
 
-type ViewName = "loading" | "error" | "empty" | "list" | "list-empty";
+type ViewName = "loading" | "error" | "empty" | "list" | "list-empty" | "viz";
 
 function showView(win: Window, view: ViewName): void {
   const views: Record<ViewName, string> = {
@@ -489,6 +560,7 @@ function showView(win: Window, view: ViewName): void {
     empty: "rp-dash-empty",
     list: "rp-dash-list",
     "list-empty": "rp-dash-list-empty",
+    viz: "rp-dash-viz",
   };
   for (const [name, id] of Object.entries(views)) {
     const node = byId(win, id);
@@ -496,10 +568,10 @@ function showView(win: Window, view: ViewName): void {
     if (name === view) node.removeAttribute("hidden");
     else node.setAttribute("hidden", "hidden");
   }
-  // 内容顶栏(视图名+清空)只在有列表语义时出现
+  // 内容顶栏(视图名+切换+清空)只在有列表/三维语义时出现
   const contentbar = byId(win, "rp-dash-contentbar");
   if (contentbar) {
-    if (view === "list" || view === "list-empty") {
+    if (view === "list" || view === "list-empty" || view === "viz") {
       contentbar.removeAttribute("hidden");
     } else {
       contentbar.setAttribute("hidden", "hidden");
