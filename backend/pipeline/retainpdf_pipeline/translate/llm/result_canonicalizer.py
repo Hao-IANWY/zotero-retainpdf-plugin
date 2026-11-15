@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from retainpdf_pipeline.services.pipeline_shared.direct_typst_math import normalize_direct_typst_translation
 from retainpdf_pipeline.translate.llm.citation_style import restore_bracket_citations
 from retainpdf_pipeline.translate.llm.placeholder_transform import repair_safe_duplicate_placeholders
@@ -11,6 +13,20 @@ from retainpdf_pipeline.translate.llm.validation.english_residue import is_direc
 from retainpdf_pipeline.translate.llm.validation.english_residue import should_force_translate_body_text
 from retainpdf_pipeline.translate.llm.validation.english_residue import unit_source_text
 
+# 接口在对话里注入的提醒（<ip_reminder>…</ip_reminder>），模型有时把它翻成中文接在译文后面，或者整段输出它代替译文：
+# 2026-11-03 一本 6574 页的手册 703 块、另外 5 本书各 1-5 块就这样当成译文存下了。没闭合的从标签起到结尾都算。
+_INJECTED_REMINDER_RE = re.compile(
+    r"<(ip_reminder|system[_-]reminder)>.*?(?:</\1>|\Z)",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def strip_injected_reminders(translated_text: str) -> str:
+    """去掉译文里模型照抄的注入提醒；剩下的就是译文（可能为空，为空就当没翻出来，照常重试）。"""
+    if "<" not in translated_text:
+        return translated_text
+    return _INJECTED_REMINDER_RE.sub("", translated_text).strip()
+
 
 def canonicalize_batch_result(batch: list[dict], result: dict[str, dict[str, str]]) -> dict[str, dict[str, str]]:
     batch_items = {str(item.get("item_id", "") or ""): item for item in batch}
@@ -19,6 +35,7 @@ def canonicalize_batch_result(batch: list[dict], result: dict[str, dict[str, str
         item = batch_items.get(item_id)
         decision = normalize_decision(str(payload.get("decision", "translate") or "translate"))
         translated_text = unwrap_translation_shell(str(payload.get("translated_text", "") or "").strip(), item_id=item_id)
+        translated_text = strip_injected_reminders(translated_text)
         if item is not None:
             source_text = unit_source_text(item).strip()
             if decision != KEEP_ORIGIN_LABEL and translated_text:
@@ -58,4 +75,4 @@ def canonicalize_batch_result(batch: list[dict], result: dict[str, dict[str, str
     return canonical
 
 
-__all__ = ["canonicalize_batch_result"]
+__all__ = ["canonicalize_batch_result", "strip_injected_reminders"]
