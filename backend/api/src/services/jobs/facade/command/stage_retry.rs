@@ -18,6 +18,7 @@ use super::stage_retry_overrides::{
 };
 use super::stage_retry_request::build_retry_request;
 use super::stage_retry_view::{build_retry_stage_submission_view, build_stage_actions_view};
+use super::streamed_ocr_artifacts::{adopt_streamed_ocr_artifacts, with_streamed_ocr_artifacts};
 
 impl<'a> JobsFacade<'a> {
     pub fn stage_actions_view(
@@ -25,7 +26,8 @@ impl<'a> JobsFacade<'a> {
         base_url: &str,
         job_id: &str,
     ) -> Result<StageActionsView, AppError> {
-        let job = load_job_or_404(self.command.db, job_id)?;
+        // 边识别边翻译的书翻译失败时，以前 OCR 产物没并回父任务：从 OCR 子任务补上再判（见 streamed_ocr_artifacts）。
+        let job = with_streamed_ocr_artifacts(self.command.db, load_job_or_404(self.command.db, job_id)?);
         Ok(build_stage_actions_view(
             base_url,
             &job,
@@ -47,6 +49,12 @@ impl<'a> JobsFacade<'a> {
         }
 
         let source_job = load_job_or_404(self.command.db, source_job_id)?;
+        // 重试翻译要复用源任务的 OCR 结果，新任务运行时按 artifact_job_id 回库里读：缺的从 OCR 子任务补上并写回。
+        let source_job = if matches!(request.stage, RetryStageKind::Translation) {
+            adopt_streamed_ocr_artifacts(self.command.db, source_job)?
+        } else {
+            source_job
+        };
         if !matches!(request.stage, RetryStageKind::Render)
             && source_job
                 .request_payload

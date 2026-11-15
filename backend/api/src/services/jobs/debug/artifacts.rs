@@ -7,8 +7,6 @@ use crate::models::api::TranslationDebugIndexView;
 use crate::models::domain::JobSnapshot;
 use crate::storage_paths::{resolve_translation_debug_index, resolve_translation_manifest};
 
-use super::common::{read_json_value, value_string};
-
 pub(super) fn read_translation_debug_index_file(
     data_root: &Path,
     job: &JobSnapshot,
@@ -35,35 +33,6 @@ pub(super) fn translation_manifest_path(
 pub(super) fn load_manifest_pages(
     manifest_path: &Path,
 ) -> Result<Vec<(i64, String, Vec<Value>)>, AppError> {
-    let manifest = read_json_value(manifest_path)?;
-    let pages = manifest
-        .get("pages")
-        .and_then(Value::as_array)
-        .ok_or_else(|| {
-            AppError::internal(format!(
-                "invalid translation manifest: {}",
-                manifest_path.display()
-            ))
-        })?;
-    let base_dir = manifest_path.parent().unwrap_or(manifest_path);
-    let mut result = Vec::new();
-    for page in pages {
-        let page_idx = page
-            .get("page_index")
-            .and_then(Value::as_i64)
-            .unwrap_or_default();
-        let rel_path = value_string(page.get("path"));
-        if rel_path.is_empty() {
-            continue;
-        }
-        let payload_path = if Path::new(&rel_path).is_absolute() {
-            PathBuf::from(&rel_path)
-        } else {
-            base_dir.join(&rel_path)
-        };
-        let page_payload = read_json_value(&payload_path)?;
-        let items = page_payload.as_array().cloned().unwrap_or_default();
-        result.push((page_idx, rel_path, items));
-    }
-    Ok(result)
+    // 清单分页只留一份实现（reader_regions、debug 共用；路径越界一起拒）。
+    crate::services::jobs::translation_manifest_pages::load_manifest_pages(manifest_path)
 }

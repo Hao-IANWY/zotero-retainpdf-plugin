@@ -219,10 +219,13 @@ async fn run_job_with_ocr(
     // 时才落库,否则原样返回 DB 的真实状态,整条链在 spawn 之前收口。
     // 重读是 check-then-act,两步之间仍有窗口;CAS 是一步,严格更强,所以不再叠一层。
     let translation_stage = run_translation_stage(&deps, parent_job, &parent_job_paths).await?;
-    let translated_job = translation_stage.job;
+    let mut translated_job = translation_stage.job;
     let source_pdf_path = translation_stage.source_pdf_path;
 
     if !matches!(translated_job.status, JobStatusKind::Succeeded) {
+        // 翻译失败 / 被取消：OCR 是成了的，它的产物照样并回父任务（driver 把这份终态连同产物写库）：以前没并，
+        // 父任务记录里没有原文 PDF、规范化文档，「重试翻译」判成缺文件（2026-11-03，6574 页的书翻完 6.86 万条后失败，重试不了）。
+        sync_parent_with_ocr_child(&mut translated_job, &ocr_finished);
         return Ok(translated_job);
     }
     run_after_translation_stage(

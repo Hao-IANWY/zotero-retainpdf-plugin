@@ -15,6 +15,7 @@ mod stage_plan;
 pub(crate) mod stage_view;
 pub(super) mod summary_loaders;
 mod support;
+pub(crate) mod translation_manifest_pages;
 pub(crate) mod translation_request_recovery;
 
 pub use control::wait_for_terminal_job;
