@@ -60,6 +60,20 @@ def _toc_estimated_text_width_pt(text: str, font_size_pt: float) -> float:
     return _toc_text_units(text) * max(font_size_pt, 1.0) * 0.54
 
 
+def _circled(inner: str) -> str:
+    """①～⑳、Ⓐ～Ⓩ、ⓐ～ⓩ；别的写成「(x)」。"""
+    inner = inner.strip()
+    if inner.isdigit() and 0 < int(inner) <= 20:
+        return chr(0x2460 + int(inner) - 1)
+    if inner == "0":
+        return "⓪"
+    if len(inner) == 1 and "A" <= inner <= "Z":
+        return chr(0x24B6 + ord(inner) - ord("A"))
+    if len(inner) == 1 and "a" <= inner <= "z":
+        return chr(0x24D0 + ord(inner) - ord("a"))
+    return f"({inner})"
+
+
 def sanitize_typst_markdown_for_compile(markdown: str) -> str:
     text = str(markdown or "")
     text = re.sub(r"\$\s*\^\s*\{\s*\\(?:circled|textcircled)\s*R\s*\}\s*\$", "®", text)
@@ -73,6 +87,10 @@ def sanitize_typst_markdown_for_compile(markdown: str) -> str:
     text = text.replace(r"\circled{\parallel}", r"\circ")
     text = text.replace(r"\textcircled{\times}", r"\otimes")
     text = text.replace(r"\textcircled{\parallel}", r"\circ")
+    # 剩下的带圈字（公式插件 mitex 不认 \textcircled / \circled，一处就让整本编译失败；报错指不到页，
+    # 只好逐页检查，1265 页的书要一个多小时，2026-11-04）：单独成公式的换成圈字本身，公式里的也换成圈字
+    text = re.sub(r"\$\s*\\(?:textcircled|circled)\s*\{\s*([^{}$]{1,3}?)\s*\}\s*\$", lambda m: _circled(m.group(1)), text)
+    text = re.sub(r"\\(?:textcircled|circled)\s*\{\s*([^{}$]{1,3}?)\s*\}", lambda m: _circled(m.group(1)), text)
     return text
 
 
