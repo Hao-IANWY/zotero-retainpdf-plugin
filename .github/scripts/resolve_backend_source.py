@@ -16,8 +16,8 @@ REQUIRED_PATHS = (
     "pyproject.toml",
     "uv.lock",
     "api/Cargo.toml",
-    # ai/pyproject.toml 上游必需，但本仓库快照不跟踪 backend/ai，随门禁裁撤；
-    # 整仓对齐上游时恢复。
+    # backend/ai：本仓库快照起就不跟踪；上游 2026-11 也已删除自家 AI 服务（retainpdf-ai 包），
+    # 双方在此对齐，无需恢复。
     "pipeline/pyproject.toml",
     "config/ocr_providers.json",
 )

@@ -13,7 +13,8 @@
 //!   (default 48) *and* no row in `jobs` references that `upload_id`.
 //! - derived caches (Word, side-by-side PDF, linearized PDF, page previews)
 //!   of terminal jobs are deleted once older than
-//!   `RUST_API_DERIVED_CACHE_RETENTION_DAYS` (default 0 = keep). They are
+//!   `RUST_API_DERIVED_CACHE_RETENTION_DAYS` (default 14, `0` = keep; the
+//!   default was `0` before 2026-11-02, aligned with upstream). They are
 //!   regenerated on the next request; see `services/derived_artifacts/retention.rs`.
 //!
 //! This module only knows about `Db` plus plain paths, not `AppState` — it
@@ -55,6 +56,10 @@ pub struct RetentionSettings {
     pub derived_cache_retention_days: u64,
 }
 
+/// 派生缓存默认保留天数。上游 2026-11-02 把默认 0（不清）改成 14：
+/// 50 个任务的 data/jobs 里渲染准备、预热、线性化 PDF 就有约 270MB，全都能重建。
+pub const DEFAULT_DERIVED_CACHE_RETENTION_DAYS: u64 = 14;
+
 impl RetentionSettings {
     pub fn from_env() -> Self {
         Self {
@@ -65,7 +70,7 @@ impl RetentionSettings {
             ),
             derived_cache_retention_days: env_u64_allow_zero(
                 "RUST_API_DERIVED_CACHE_RETENTION_DAYS",
-                0,
+                DEFAULT_DERIVED_CACHE_RETENTION_DAYS,
             ),
         }
     }
